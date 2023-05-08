@@ -14,15 +14,16 @@ import (
 
 func TestStoreTx(t *testing.T) {
 	d := NewSimple(storage.NewMemoryStore())
-	tx := transaction.NewTx(&types.LegacyTx{})
+	ethtx, _ := transaction.NewEthTx(types.NewTx(&types.LegacyTx{}))
+	tx := transaction.NewTx(ethtx)
 	receipt := &types.Receipt{}
-	err := d.StoreAsTransaction(tx, 0, receipt)
+	err := d.StoreAsTransaction(tx, receipt)
 	assert.NoError(t, err)
 	_, err = d.GetReceipt(tx.Hash())
 	assert.NoError(t, err)
-	txx, _, h, err := d.GetTransaction(tx.Hash())
+	txx, r, err := d.GetTransaction(tx.Hash())
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(0), h)
+	assert.Equal(t, uint64(0), r.BlockNumber.Uint64())
 	assert.True(t, txx.Hash() == tx.Hash())
 }
 

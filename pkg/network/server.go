@@ -55,7 +55,7 @@ type (
 		GetHeader(hash common.Hash) (*block.Header, error)
 		GetHeaderHash(int) common.Hash
 		GetMemPool() *mempool.Pool
-		GetTransaction(common.Hash) (*transaction.Transaction, *types.Receipt, uint32, error)
+		GetTransaction(common.Hash) (*transaction.Transaction, *types.Receipt, error)
 		HasBlock(common.Hash) bool
 		HeaderHeight() uint32
 		PoolTx(t *transaction.Transaction, pools ...*mempool.Pool) error
@@ -639,7 +639,7 @@ func (s *Server) handleGetDataCmd(p Peer, inv *payload.Inventory) error {
 
 		switch inv.Type {
 		case payload.TXType:
-			tx, _, _, err := s.chain.GetTransaction(hash)
+			tx, _, err := s.chain.GetTransaction(hash)
 			if err == nil {
 				msg = NewMessage(CMDTX, tx)
 			} else {

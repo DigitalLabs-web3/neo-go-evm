@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"sort"
 	"sync"
@@ -657,7 +656,7 @@ func (bc *Blockchain) storeBlock(block *block.Block, txpool *mempool.Pool) error
 				blockaer = aer
 				break
 			}
-			err = kvcache.StoreAsTransaction(block.Transactions[txCnt], block.Index, aer)
+			err = kvcache.StoreAsTransaction(block.Transactions[txCnt], aer)
 			txCnt++
 			if err != nil {
 				err = fmt.Errorf("failed to store exec result: %w", err)
@@ -954,9 +953,9 @@ func (bc *Blockchain) persist(isSync bool) (time.Duration, error) {
 }
 
 // GetTransaction returns a TX and its height by the given hash. The height is MaxUint32 if tx is in the mempool.
-func (bc *Blockchain) GetTransaction(hash common.Hash) (*transaction.Transaction, *types.Receipt, uint32, error) {
+func (bc *Blockchain) GetTransaction(hash common.Hash) (*transaction.Transaction, *types.Receipt, error) {
 	if tx, ok := bc.memPool.TryGetValue(hash); ok {
-		return tx, nil, math.MaxUint32, nil // the height is not actually defined for memPool transaction.
+		return tx, nil, nil // the height is not actually defined for memPool transaction.
 	}
 	return bc.dao.GetTransaction(hash)
 }
@@ -990,7 +989,7 @@ func (bc *Blockchain) GetBlock(hash common.Hash, full bool) (*block.Block, *type
 	}
 	if full {
 		for _, tx := range block.Transactions {
-			stx, _, _, err := bc.dao.GetTransaction(tx.Hash())
+			stx, _, err := bc.dao.GetTransaction(tx.Hash())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1513,7 +1512,7 @@ func (bc *Blockchain) GetLogs(filter *filters.LogFilter) ([]*types.Log, error) {
 			return nil, err
 		}
 		for _, tx := range block.Transactions {
-			_, appExec, _, err := bc.GetTransaction(tx.Hash())
+			_, appExec, err := bc.GetTransaction(tx.Hash())
 			if err != nil {
 				return nil, err
 			}

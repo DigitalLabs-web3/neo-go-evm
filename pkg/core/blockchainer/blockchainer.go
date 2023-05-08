@@ -48,7 +48,7 @@ type Blockchainer interface {
 	GetStorageItem(hash common.Address, key []byte) state.StorageItem
 	GetStorageItems(hash common.Address) ([]state.StorageItemWithKey, error)
 	GetTestVM(tx *transaction.Transaction, b *block.Block) (*interop.Context, error)
-	GetTransaction(common.Hash) (*transaction.Transaction, *types.Receipt, uint32, error)
+	GetTransaction(common.Hash) (*transaction.Transaction, *types.Receipt, error)
 	mempool.Feer // fee interface
 	ManagementContractAddress() common.Address
 	PoolTx(t *transaction.Transaction, pools ...*mempool.Pool) error

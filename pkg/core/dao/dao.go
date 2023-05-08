@@ -167,13 +167,9 @@ func (dao *Simple) makeTxKey(hash common.Hash) []byte {
 	return key
 }
 
-// StoreAsTransaction stores given TX as DataTransaction. It also stores transactions
-// given tx has conflicts with as DataTransaction with dummy version. It can reuse given
-// buffer for the purpose of value serialization.
-func (dao *Simple) StoreAsTransaction(tx *transaction.Transaction, index uint32, aer *types.Receipt) error {
+func (dao *Simple) StoreAsTransaction(tx *transaction.Transaction, aer *types.Receipt) error {
 	key := dao.makeTxKey(tx.Hash())
 	buf := io.NewBufBinWriter()
-	buf.WriteU32LE(index)
 	bTx, err := io.ToByteArray(tx)
 	if err != nil {
 		return err
@@ -221,30 +217,29 @@ func (dao *Simple) GetReceipt(hash common.Hash) (*types.Receipt, error) {
 
 // GetTransaction returns Transaction and its height by the given hash
 // if it exists in the store. It does not return dummy transactions.
-func (dao *Simple) GetTransaction(hash common.Hash) (*transaction.Transaction, *types.Receipt, uint32, error) {
+func (dao *Simple) GetTransaction(hash common.Hash) (*transaction.Transaction, *types.Receipt, error) {
 	key := dao.makeTxKey(hash)
 	b, err := dao.Store.Get(key)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, nil, err
 	}
 	if len(b) < 6 {
-		return nil, nil, 0, errors.New("bad transaction bytes")
+		return nil, nil, errors.New("bad transaction bytes")
 	}
 	r := io.NewBinReaderFromBuf(b)
-	var height = r.ReadU32LE()
 	tx := &transaction.Transaction{}
 	bTx := r.ReadVarBytes()
 	err = io.FromByteArray(tx, bTx)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, nil, err
 	}
 	bReceipt := r.ReadVarBytes()
 	receipt := &types.Receipt{}
 	err = json.Unmarshal(bReceipt, receipt)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, nil, err
 	}
-	return tx, receipt, height, nil
+	return tx, receipt, nil
 }
 
 // -- end notification event.

@@ -43,7 +43,7 @@ type Ledger interface {
 	GetConfig() config.ProtocolConfiguration
 	GetMemPool() *mempool.Pool
 	GetStateModule() blockchainer.StateRoot
-	GetTransaction(common.Hash) (*transaction.Transaction, *types.Receipt, uint32, error)
+	GetTransaction(common.Hash) (*transaction.Transaction, *types.Receipt, error)
 	GetValidators(uint32) ([]*keys.PublicKey, error)
 	PoolTx(t *transaction.Transaction, pools ...*mempool.Pool) error
 	SubscribeForBlocks(ch chan<- *coreb.Block)
@@ -408,7 +408,7 @@ func (s *service) getTx(h common.Hash) block.Transaction {
 		return tx.(*transaction.Transaction)
 	}
 
-	tx, _, _, _ := s.Config.Chain.GetTransaction(h)
+	tx, _, _ := s.Config.Chain.GetTransaction(h)
 
 	// this is needed because in case of absent tx dBFT expects to
 	// get nil interface, not a nil pointer to any concrete type
