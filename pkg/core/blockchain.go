@@ -688,7 +688,7 @@ func (bc *Blockchain) storeBlock(block *block.Block, txpool *mempool.Pool) error
 	sdb := statedb.NewStateDB(cache, bc)
 	for i, tx := range block.Transactions {
 		bc.log.Debug("executing tx", zap.String("hash", tx.Hash().String()))
-		gasPrice := bc.GetGasPrice()
+		gasPrice := tx.GasPrice()
 		blockGasUsed += tx.Gas()
 		netFee := transaction.CalculateNetworkFee(tx, bc.FeePerByte())
 		gas := tx.Gas() - netFee
