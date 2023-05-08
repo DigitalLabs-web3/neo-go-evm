@@ -1312,7 +1312,7 @@ func (bc *Blockchain) verifyAndPoolTx(t *transaction.Transaction, pool *mempool.
 			return ErrInsufficientFunds
 		case errors.Is(err, mempool.ErrOOM):
 			return ErrOOM
-		case errors.Is(err, mempool.ErrConflictsAttribute):
+		case errors.Is(err, mempool.ErrConflictsNonce):
 			return fmt.Errorf("mempool: %w: %s", ErrHasConflicts, err)
 		default:
 			return err
@@ -1347,6 +1347,9 @@ func (bc *Blockchain) IsTxStillRelevant(t *transaction.Transaction, txpool *memp
 			return false
 		}
 	} else if txpool.HasConflicts(t, bc) {
+		return false
+	}
+	if bc.GetNonce(t.From()) != t.Nonce() {
 		return false
 	}
 	if recheckWitness {

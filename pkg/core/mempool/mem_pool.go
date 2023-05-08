@@ -29,11 +29,8 @@ var (
 	// pool because of its capacity constraints.
 	ErrOOM = errors.New("out of memory")
 	// ErrConflictsAttribute is returned when transaction conflicts with other transactions
-	// due to its (or theirs) Conflicts attributes.
-	ErrConflictsAttribute = errors.New("conflicts with memory pool due to Conflicts attribute")
-	// ErrOracleResponse is returned when mempool already contains transaction
-	// with the same oracle response ID and higher network fee.
-	ErrOracleResponse = errors.New("conflicts with memory pool due to OracleResponse attribute")
+	// due to its (or theirs) nonce.
+	ErrConflictsNonce = errors.New("conflicts with memory pool due to nonce")
 )
 
 // item represents a transaction in the the Memory pool.
@@ -129,7 +126,6 @@ func (mp *Pool) containsKey(hash common.Hash) bool {
 func (mp *Pool) HasConflicts(t *transaction.Transaction, fee Feer) bool {
 	mp.lock.RLock()
 	defer mp.lock.RUnlock()
-
 	return mp.containsKey(t.Hash())
 }
 
@@ -443,8 +439,10 @@ func (mp *Pool) checkTxConflicts(tx *transaction.Transaction, fee Feer) (*transa
 			if existTx.GasPrice().Cmp(tx.GasPrice()) < 0 {
 				conflictToBeRemoved = existTx
 				(&expectedSenderFee.feeSum).Sub(&expectedSenderFee.feeSum, existTx.Cost())
-				break
+			} else {
+				return nil, ErrConflictsNonce
 			}
+			break
 		}
 	}
 	_, err := checkBalance(tx, expectedSenderFee)
