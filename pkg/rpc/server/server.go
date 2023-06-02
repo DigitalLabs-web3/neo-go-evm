@@ -1034,7 +1034,7 @@ func (s *Server) eth_getBlock(hash common.Hash, full bool) (*result.Block, *resp
 	if err != nil {
 		return nil, response.NewInternalServerError("can't get validators", err)
 	}
-	return result.NewBlock(block, receipt, sr, validators[block.PrimaryIndex].Address(), full, s.chain.GetConfig()), nil
+	return result.NewBlock(s.chain, block, receipt, sr, validators[block.PrimaryIndex].Address(), full, s.chain.GetConfig()), nil
 }
 
 func (s *Server) eth_getTransactionByHash(params request.Params) (interface{}, *response.Error) {
@@ -1126,13 +1126,9 @@ func (s *Server) eth_getTransactionReceipt(params request.Params) (interface{}, 
 		return nil, response.ErrInvalidParams
 	}
 	tx, receipt, err := s.chain.GetTransaction(txHash)
-	if err != nil && !errors.Is(err, storage.ErrKeyNotFound) {
-		return nil, response.NewRPCError(fmt.Sprintf("Failed to get receipt: %s", err), err.Error(), err)
+	if err != nil || receipt == nil {
+		return nil, nil
 	}
-	if receipt == nil {
-		return nil, response.NewRPCError("transaction is pending", "", nil)
-	}
-
 	return result.NewRReceipt(receipt, tx), nil
 }
 
