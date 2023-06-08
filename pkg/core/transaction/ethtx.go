@@ -5,11 +5,11 @@ import (
 	"errors"
 	"math/big"
 
+	nio "github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	nio "github.com/neo-ngd/neo-go/pkg/io"
 )
 
 var (

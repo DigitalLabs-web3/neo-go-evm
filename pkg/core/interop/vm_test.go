@@ -4,14 +4,14 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/dao"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native/nativenames"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/statedb"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/storage"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/vm"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/config"
-	"github.com/neo-ngd/neo-go/pkg/core/dao"
-	"github.com/neo-ngd/neo-go/pkg/core/native"
-	"github.com/neo-ngd/neo-go/pkg/core/native/nativenames"
-	"github.com/neo-ngd/neo-go/pkg/core/statedb"
-	"github.com/neo-ngd/neo-go/pkg/core/storage"
-	"github.com/neo-ngd/neo-go/pkg/vm"
 	"github.com/stretchr/testify/assert"
 )
 

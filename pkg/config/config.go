@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/neo-ngd/neo-go/pkg/config/netmode"
-	"github.com/neo-ngd/neo-go/pkg/rpc"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config/netmode"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/rpc"
 	"gopkg.in/yaml.v2"
 )
 

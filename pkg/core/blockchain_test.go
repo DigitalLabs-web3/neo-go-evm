@@ -5,13 +5,13 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/wallet"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/neo-ngd/neo-go/pkg/core/transaction"
-	"github.com/neo-ngd/neo-go/pkg/crypto/keys"
-	"github.com/neo-ngd/neo-go/pkg/wallet"
 	"github.com/stretchr/testify/assert"
 )
 

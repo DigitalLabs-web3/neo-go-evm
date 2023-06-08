@@ -1,7 +1,7 @@
 package rpc
 
 import (
-	"github.com/neo-ngd/neo-go/pkg/wallet"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/wallet"
 )
 
 type (

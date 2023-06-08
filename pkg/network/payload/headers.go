@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/neo-ngd/neo-go/pkg/core/block"
-	"github.com/neo-ngd/neo-go/pkg/io"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/block"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 )
 
 // Headers payload.

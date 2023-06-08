@@ -6,14 +6,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/neo-ngd/neo-go/cli/input"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/input"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/wallet"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/neo-ngd/neo-go/pkg/core/transaction"
-	"github.com/neo-ngd/neo-go/pkg/crypto"
-	"github.com/neo-ngd/neo-go/pkg/crypto/hash"
-	"github.com/neo-ngd/neo-go/pkg/crypto/keys"
-	"github.com/neo-ngd/neo-go/pkg/wallet"
 )
 
 type SignContext struct {

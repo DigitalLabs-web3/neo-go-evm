@@ -3,7 +3,7 @@ package capability
 import (
 	"errors"
 
-	"github.com/neo-ngd/neo-go/pkg/io"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 )
 
 // MaxCapabilities is the maximum number of capabilities per payload.

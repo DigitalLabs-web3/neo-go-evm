@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/dao"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/storage"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/util/slice"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/neo-ngd/neo-go/pkg/core/dao"
-	"github.com/neo-ngd/neo-go/pkg/core/storage"
-	"github.com/neo-ngd/neo-go/pkg/util/slice"
 )
 
 type MemStore struct {

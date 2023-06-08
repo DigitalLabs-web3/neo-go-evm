@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/storage"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/neo-ngd/neo-go/pkg/core/storage"
-	"github.com/neo-ngd/neo-go/pkg/core/transaction"
 	"github.com/stretchr/testify/assert"
 )
 

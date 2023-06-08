@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/storage"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/core/storage"
-	"github.com/neo-ngd/neo-go/pkg/io"
 )
 
 // MaxValueLength is a max length of a leaf node value.

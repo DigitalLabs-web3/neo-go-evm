@@ -1,8 +1,8 @@
 package request
 
 import (
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/io"
 )
 
 // ExpandArrayIntoScript pushes all FuncParam parameters from the given array

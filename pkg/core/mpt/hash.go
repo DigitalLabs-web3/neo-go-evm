@@ -3,8 +3,8 @@ package mpt
 import (
 	"errors"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/io"
 )
 
 // HashNode represents MPT's hash node.

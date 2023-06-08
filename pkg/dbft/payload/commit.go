@@ -1,6 +1,6 @@
 package payload
 
-import "github.com/neo-ngd/neo-go/pkg/io"
+import "github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 
 // Commit is an interface for dBFT Commit message.
 type Commit interface {

@@ -1,7 +1,7 @@
 package result
 
 import (
-	"github.com/neo-ngd/neo-go/pkg/crypto/keys"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
 )
 
 // Validator used for the representation of

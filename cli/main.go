@@ -3,13 +3,13 @@ package main
 import (
 	"os"
 
-	"github.com/neo-ngd/neo-go/cli/contract"
-	"github.com/neo-ngd/neo-go/cli/native"
-	"github.com/neo-ngd/neo-go/cli/query"
-	"github.com/neo-ngd/neo-go/cli/server"
-	"github.com/neo-ngd/neo-go/cli/utils"
-	"github.com/neo-ngd/neo-go/cli/wallet"
-	"github.com/neo-ngd/neo-go/pkg/config"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/contract"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/native"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/query"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/server"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/utils"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/wallet"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config"
 	"github.com/urfave/cli"
 )
 

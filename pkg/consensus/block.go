@@ -3,11 +3,11 @@ package consensus
 import (
 	"errors"
 
+	coreb "github.com/DigitalLabs-web3/neo-go-evm/pkg/core/block"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/dbft/block"
 	"github.com/ethereum/go-ethereum/common"
-	coreb "github.com/neo-ngd/neo-go/pkg/core/block"
-	"github.com/neo-ngd/neo-go/pkg/core/transaction"
-	"github.com/neo-ngd/neo-go/pkg/crypto/keys"
-	"github.com/neo-ngd/neo-go/pkg/dbft/block"
 )
 
 // methods necessary for dBFT library.

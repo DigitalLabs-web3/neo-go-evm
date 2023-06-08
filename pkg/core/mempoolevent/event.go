@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/neo-ngd/neo-go/pkg/core/transaction"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
 )
 
 // Type represents mempool event type.

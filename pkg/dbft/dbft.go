@@ -4,10 +4,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/dbft/block"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/dbft/payload"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/dbft/timer"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/dbft/block"
-	"github.com/neo-ngd/neo-go/pkg/dbft/payload"
-	"github.com/neo-ngd/neo-go/pkg/dbft/timer"
 	"go.uber.org/zap"
 )
 

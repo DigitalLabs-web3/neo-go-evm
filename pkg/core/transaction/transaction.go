@@ -7,9 +7,9 @@ import (
 	"math/big"
 	"sync/atomic"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/neo-ngd/neo-go/pkg/io"
 )
 
 const (

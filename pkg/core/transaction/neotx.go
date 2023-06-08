@@ -7,10 +7,10 @@ import (
 	"math/big"
 	"math/rand"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/neo-ngd/neo-go/pkg/crypto/hash"
-	"github.com/neo-ngd/neo-go/pkg/io"
 )
 
 // ErrInvalidWitnessNum returns when the number of witnesses does not match signers.

@@ -1,8 +1,8 @@
 package client
 
 import (
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/rpc/request"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/rpc/request"
 )
 
 func (c *Client) Bridge_GetMinted(id int64) (common.Hash, error) {

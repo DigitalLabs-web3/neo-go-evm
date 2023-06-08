@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/storage"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/util/slice"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/core/storage"
-	"github.com/neo-ngd/neo-go/pkg/crypto/hash"
-	"github.com/neo-ngd/neo-go/pkg/util/slice"
 )
 
 // GetProof returns a proof that key belongs to t.

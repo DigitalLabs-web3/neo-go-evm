@@ -6,16 +6,16 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/block"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/dao"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native/nativeids"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native/nativenames"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native/noderoles"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/state"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/config"
-	"github.com/neo-ngd/neo-go/pkg/core/block"
-	"github.com/neo-ngd/neo-go/pkg/core/dao"
-	"github.com/neo-ngd/neo-go/pkg/core/native/nativeids"
-	"github.com/neo-ngd/neo-go/pkg/core/native/nativenames"
-	"github.com/neo-ngd/neo-go/pkg/core/native/noderoles"
-	"github.com/neo-ngd/neo-go/pkg/core/state"
-	"github.com/neo-ngd/neo-go/pkg/crypto/hash"
-	"github.com/neo-ngd/neo-go/pkg/crypto/keys"
 )
 
 const (

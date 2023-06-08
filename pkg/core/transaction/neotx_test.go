@@ -4,9 +4,9 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/neo-ngd/neo-go/pkg/io"
 	"github.com/stretchr/testify/assert"
 )
 

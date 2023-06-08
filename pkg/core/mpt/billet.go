@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/storage"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/util/slice"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/core/storage"
-	"github.com/neo-ngd/neo-go/pkg/io"
-	"github.com/neo-ngd/neo-go/pkg/util/slice"
 )
 
 var (
@@ -21,12 +21,12 @@ var (
 
 // Billet is a part of MPT trie with missing hash nodes that need to be restored.
 // Billet is based on the following assumptions:
-// 1. Refcount can only be incremented (we don't change MPT structure during restore,
-//    thus don't need to decrease refcount).
-// 2. Each time the part of Billet is completely restored, it is collapsed into
-//    HashNode.
-// 3. Pair (node, path) must be restored only once. It's a duty of MPT pool to manage
-//    MPT paths in order to provide this assumption.
+//  1. Refcount can only be incremented (we don't change MPT structure during restore,
+//     thus don't need to decrease refcount).
+//  2. Each time the part of Billet is completely restored, it is collapsed into
+//     HashNode.
+//  3. Pair (node, path) must be restored only once. It's a duty of MPT pool to manage
+//     MPT paths in order to provide this assumption.
 type Billet struct {
 	TempStoragePrefix storage.KeyPrefix
 	Store             *storage.MemCachedStore

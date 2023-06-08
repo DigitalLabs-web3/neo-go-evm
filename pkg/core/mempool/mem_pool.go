@@ -7,9 +7,9 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/mempoolevent"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/core/mempoolevent"
-	"github.com/neo-ngd/neo-go/pkg/core/transaction"
 	"go.uber.org/atomic"
 )
 

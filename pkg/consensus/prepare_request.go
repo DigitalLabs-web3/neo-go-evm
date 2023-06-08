@@ -1,10 +1,10 @@
 package consensus
 
 import (
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/block"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/dbft/payload"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/core/block"
-	"github.com/neo-ngd/neo-go/pkg/dbft/payload"
-	"github.com/neo-ngd/neo-go/pkg/io"
 )
 
 // prepareRequest represents dBFT prepareRequest message.

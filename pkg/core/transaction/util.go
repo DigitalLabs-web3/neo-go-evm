@@ -1,9 +1,9 @@
 package transaction
 
 import (
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/neo-ngd/neo-go/pkg/io"
 )
 
 type writeCounter int

@@ -9,15 +9,15 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/flags"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/input"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/options"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/wallet"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/rpc/response/result"
+	corew "github.com/DigitalLabs-web3/neo-go-evm/pkg/wallet"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/neo-ngd/neo-go/cli/flags"
-	"github.com/neo-ngd/neo-go/cli/input"
-	"github.com/neo-ngd/neo-go/cli/options"
-	"github.com/neo-ngd/neo-go/cli/wallet"
-	"github.com/neo-ngd/neo-go/pkg/rpc/response/result"
-	corew "github.com/neo-ngd/neo-go/pkg/wallet"
 	"github.com/urfave/cli"
 )
 

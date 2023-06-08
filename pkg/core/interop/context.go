@@ -3,16 +3,16 @@ package interop
 import (
 	"math/big"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/block"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/dao"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/statedb"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/vm"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/neo-ngd/neo-go/pkg/config"
-	"github.com/neo-ngd/neo-go/pkg/core/block"
-	"github.com/neo-ngd/neo-go/pkg/core/dao"
-	"github.com/neo-ngd/neo-go/pkg/core/native"
-	"github.com/neo-ngd/neo-go/pkg/core/statedb"
-	"github.com/neo-ngd/neo-go/pkg/core/transaction"
-	"github.com/neo-ngd/neo-go/pkg/crypto/keys"
-	"github.com/neo-ngd/neo-go/pkg/vm"
 )
 
 type NativeContract interface {

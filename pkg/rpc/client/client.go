@@ -12,11 +12,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native/nativenames"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/rpc/request"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/rpc/response"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/core/native"
-	"github.com/neo-ngd/neo-go/pkg/core/native/nativenames"
-	"github.com/neo-ngd/neo-go/pkg/rpc/request"
-	"github.com/neo-ngd/neo-go/pkg/rpc/response"
 	"go.uber.org/atomic"
 )
 

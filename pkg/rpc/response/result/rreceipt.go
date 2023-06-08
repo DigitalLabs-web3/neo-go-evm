@@ -3,9 +3,9 @@ package result
 import (
 	"encoding/json"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/neo-ngd/neo-go/pkg/core/transaction"
 )
 
 type receptExtra struct {

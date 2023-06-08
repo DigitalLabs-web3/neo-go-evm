@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/neo-ngd/neo-go/pkg/network/capability"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/network/capability"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	atomic2 "go.uber.org/atomic"

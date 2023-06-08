@@ -6,10 +6,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/neo-ngd/neo-go/pkg/crypto/hash"
-	"github.com/neo-ngd/neo-go/pkg/crypto/keys"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,7 +45,7 @@ func TestOneMultiAddress(t *testing.T) {
 	script, err := ks.CreateDefaultMultiSigRedeemScript()
 	assert.NoError(t, err)
 	t.Log(hash.Hash160(script))
-	
+
 	k, err = keys.NewPublicKeyFromString("03092c7fc564d67a2c589a4229c54f19358629529bc191daf1642d0a95989e3a83")
 	assert.NoError(t, err)
 	ks = keys.PublicKeys{k}

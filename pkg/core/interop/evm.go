@@ -3,10 +3,10 @@ package interop
 import (
 	"math/big"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/vm"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/neo-ngd/neo-go/pkg/config"
-	"github.com/neo-ngd/neo-go/pkg/vm"
 )
 
 type EVM struct {

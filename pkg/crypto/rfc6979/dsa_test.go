@@ -10,7 +10,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/neo-ngd/neo-go/pkg/crypto/rfc6979"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/rfc6979"
 )
 
 type dsaFixture struct {

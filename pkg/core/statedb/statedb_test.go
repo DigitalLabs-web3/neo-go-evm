@@ -3,11 +3,11 @@ package statedb
 import (
 	"testing"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/dao"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/storage"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/config"
-	"github.com/neo-ngd/neo-go/pkg/core/dao"
-	"github.com/neo-ngd/neo-go/pkg/core/native"
-	"github.com/neo-ngd/neo-go/pkg/core/storage"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -3,8 +3,8 @@ package stateroot
 import (
 	"fmt"
 
-	"github.com/neo-ngd/neo-go/pkg/core/state"
-	"github.com/neo-ngd/neo-go/pkg/io"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/state"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 )
 
 type (

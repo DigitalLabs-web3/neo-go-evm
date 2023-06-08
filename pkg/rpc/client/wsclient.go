@@ -10,13 +10,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/block"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/rpc/request"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/rpc/response"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/gorilla/websocket"
-	"github.com/neo-ngd/neo-go/pkg/core/block"
-	"github.com/neo-ngd/neo-go/pkg/core/transaction"
-	"github.com/neo-ngd/neo-go/pkg/rpc/request"
-	"github.com/neo-ngd/neo-go/pkg/rpc/response"
 )
 
 // WSClient is a websocket-enabled RPC client that can be used with appropriate

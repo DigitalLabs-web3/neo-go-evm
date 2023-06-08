@@ -1,7 +1,7 @@
 package dbft
 
 import (
-	"github.com/neo-ngd/neo-go/pkg/dbft/payload"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/dbft/payload"
 	"go.uber.org/zap"
 )
 

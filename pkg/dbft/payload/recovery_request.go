@@ -1,6 +1,6 @@
 package payload
 
-import "github.com/neo-ngd/neo-go/pkg/io"
+import "github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 
 // RecoveryRequest represents dBFT RecoveryRequest message.
 type RecoveryRequest interface {

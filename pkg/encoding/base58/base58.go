@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
 	"github.com/mr-tron/base58"
-	"github.com/neo-ngd/neo-go/pkg/crypto/hash"
 )
 
 // CheckDecode implements a base58-encoded string decoding with hash-based

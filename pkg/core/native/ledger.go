@@ -3,15 +3,15 @@ package native
 import (
 	"encoding/binary"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/dao"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native/nativeids"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native/nativenames"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/state"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/core/dao"
-	"github.com/neo-ngd/neo-go/pkg/core/native/nativeids"
-	"github.com/neo-ngd/neo-go/pkg/core/native/nativenames"
-	"github.com/neo-ngd/neo-go/pkg/core/state"
 )
 
 const (
-	prefixNonce        = 0x01
+	prefixNonce = 0x01
 )
 
 var (

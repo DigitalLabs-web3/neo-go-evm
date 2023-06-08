@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/flags"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/input"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/options"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/wallet"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/cli/flags"
-	"github.com/neo-ngd/neo-go/cli/input"
-	"github.com/neo-ngd/neo-go/cli/options"
-	"github.com/neo-ngd/neo-go/pkg/wallet"
 	"github.com/urfave/cli"
 )
 

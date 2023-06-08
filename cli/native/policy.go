@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/options"
+	"github.com/DigitalLabs-web3/neo-go-evm/cli/wallet"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native/nativenames"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/cli/options"
-	"github.com/neo-ngd/neo-go/cli/wallet"
-	"github.com/neo-ngd/neo-go/pkg/core/native/nativenames"
 	"github.com/urfave/cli"
 )
 

@@ -3,7 +3,7 @@ package network
 import (
 	"time"
 
-	"github.com/neo-ngd/neo-go/pkg/config"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config"
 	"go.uber.org/zap/zapcore"
 )
 

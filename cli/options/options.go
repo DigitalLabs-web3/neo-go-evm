@@ -8,8 +8,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/neo-ngd/neo-go/pkg/config/netmode"
-	"github.com/neo-ngd/neo-go/pkg/rpc/client"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config/netmode"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/rpc/client"
 	"github.com/urfave/cli"
 )
 

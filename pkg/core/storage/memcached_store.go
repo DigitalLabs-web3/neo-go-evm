@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/neo-ngd/neo-go/pkg/util/slice"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/util/slice"
 )
 
 // MemCachedStore is a wrapper around persistent store that caches all changes

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"sort"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/neo-ngd/neo-go/pkg/crypto/keys"
-	"github.com/neo-ngd/neo-go/pkg/io"
 )
 
 var (

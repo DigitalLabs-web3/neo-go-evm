@@ -3,20 +3,22 @@ package result
 import (
 	"encoding/json"
 	"errors"
+	"math/big"
 
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/block"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/state"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/neo-ngd/neo-go/pkg/config"
-	"github.com/neo-ngd/neo-go/pkg/core/block"
-	"github.com/neo-ngd/neo-go/pkg/core/state"
-	"github.com/neo-ngd/neo-go/pkg/io"
 )
 
 type (
 	LedgerAux interface {
 		BlockHeight() uint32
 		GetHeaderHash(int) common.Hash
+		GetGasPrice() *big.Int
 	}
 
 	transactionsObj struct {
@@ -49,7 +51,7 @@ type (
 )
 
 // NewBlock creates a new Block wrapper.
-func NewBlock(b *block.Block, receipt *types.Receipt, sr *state.MPTRoot, miner common.Address, full bool, cfg config.ProtocolConfiguration) *Block {
+func NewBlock(chain LedgerAux, b *block.Block, receipt *types.Receipt, sr *state.MPTRoot, miner common.Address, full bool, cfg config.ProtocolConfiguration) *Block {
 	res := &Block{
 		Header: b.Header,
 		BlockMetadata: BlockMetadata{

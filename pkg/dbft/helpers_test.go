@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/neo-ngd/neo-go/pkg/dbft/payload"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/dbft/payload"
 )
 
 func TestMessageCache(t *testing.T) {

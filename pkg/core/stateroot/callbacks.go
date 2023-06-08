@@ -1,7 +1,7 @@
 package stateroot
 
 import (
-	"github.com/neo-ngd/neo-go/pkg/crypto/keys"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
 )
 
 // SetUpdateValidatorsCallback sets callback for sending signed root.

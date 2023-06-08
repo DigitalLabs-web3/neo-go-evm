@@ -1,4 +1,4 @@
-module github.com/neo-ngd/neo-go
+module github.com/DigitalLabs-web3/neo-go-evm
 
 go 1.18
 

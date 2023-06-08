@@ -1,8 +1,8 @@
 package payload
 
 import (
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/neo-ngd/neo-go/pkg/io"
 )
 
 // The node can broadcast the object information it owns by this message.

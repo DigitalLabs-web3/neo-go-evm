@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/neo-ngd/neo-go/pkg/core/block"
-	"github.com/neo-ngd/neo-go/pkg/core/transaction"
-	"github.com/neo-ngd/neo-go/pkg/io"
-	"github.com/neo-ngd/neo-go/pkg/network/payload"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/block"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/network/payload"
 )
 
 //go:generate stringer -type=CommandType -output=message_string.go

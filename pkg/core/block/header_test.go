@@ -3,7 +3,7 @@ package block
 import (
 	"testing"
 
-	"github.com/neo-ngd/neo-go/pkg/io"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 )
 
 func TestHeaderEncode(t *testing.T) {
