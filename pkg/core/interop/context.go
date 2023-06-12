@@ -94,7 +94,7 @@ func newEVMBlockContext(block *block.Block,
 	random := common.BigToHash(big.NewInt(int64(block.Nonce)))
 	bctx = vm.BlockContext{
 		CanTransfer: func(sdb vm.StateDB, from common.Address, amount *big.Int) bool {
-			return sdb.GetBalance(from).Cmp(amount) > 0
+			return sdb.GetBalance(from).Cmp(amount) >= 0
 		},
 		Transfer: func(sdb vm.StateDB, from common.Address, to common.Address, amount *big.Int) {
 			fromAmount := big.NewInt(0).Neg(amount)
