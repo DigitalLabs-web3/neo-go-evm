@@ -1419,6 +1419,7 @@ func (bc *Blockchain) IsBlocked(address common.Address) bool {
 func (bc *Blockchain) GetTestVM(tx *transaction.Transaction, b *block.Block) (*interop.Context, error) {
 	cache := bc.dao.GetPrivate()
 	sdb := statedb.NewStateDB(cache, bc)
+	sdb.PrepareAccessList(tx.From(), tx.To(), evm.PrecompiledAddressesBerlin, tx.AccessList())
 	return interop.NewContext(b, tx, sdb, bc)
 }
 

@@ -101,6 +101,9 @@ func (m *Message) Decode(br *io.BinReader) error {
 	l := br.ReadVarUint()
 	// check the length first in order not to allocate memory
 	// for an empty compressed payload
+	if br.Err != nil {
+		return br.Err
+	}
 	if l == 0 {
 		switch m.Command {
 		case CMDFilterClear, CMDGetAddr, CMDMempool, CMDVerack:
