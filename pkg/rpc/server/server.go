@@ -896,7 +896,7 @@ func (s *Server) eth_call(params request.Params) (interface{}, *response.Error) 
 		ret, _, err = ic.VM.Call(ic, *tx.To(), tx.Data(), TestGas, tx.Value())
 	}
 	if err != nil {
-		return nil, response.NewInvalidRequestError(fmt.Sprintf("Could not executing data: %s", err), err)
+		return nil, response.NewRPCError(fmt.Sprintf("Could not executing data: %s", err), hexutil.Encode(ret), err)
 	}
 	return hexutil.Encode(ret), nil
 }
@@ -953,13 +953,14 @@ func (s *Server) eth_estimateGas(reqParams request.Params) (interface{}, *respon
 		}
 	}
 	var left uint64
+	var ret []byte
 	if tx.To() == nil {
-		_, _, left, err = ic.VM.Create(ic, tx.Data(), TestGas, tx.Value())
+		ret, _, left, err = ic.VM.Create(ic, tx.Data(), TestGas, tx.Value())
 	} else {
-		_, left, err = ic.VM.Call(ic, *tx.To(), tx.Data(), TestGas, tx.Value())
+		ret, left, err = ic.VM.Call(ic, *tx.To(), tx.Data(), TestGas, tx.Value())
 	}
 	if err != nil {
-		return nil, response.NewInvalidRequestError(fmt.Sprintf("Could not executing data: %s", err), err)
+		return nil, response.NewRPCError(fmt.Sprintf("Could not executing data: %s", err), hexutil.Encode(ret), err)
 	}
 	gas := TestGas - left
 	feePerByte := s.chain.GetFeePerByte()
