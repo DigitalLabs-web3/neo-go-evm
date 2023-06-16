@@ -18,8 +18,8 @@ func NewEVM(bctx vm.BlockContext,
 	tctx vm.TxContext,
 	sdb vm.StateDB,
 	protocolSettings config.ProtocolConfiguration,
-	nativeContracts map[common.Address]vm.NativeContract) *EVM {
-	chainConfig := &params.ChainConfig{
+	nativeContracts map[common.Address]vm.NativeContract, tracer vm.EVMLogger) *EVM {
+	chainCfg := &params.ChainConfig{
 		ChainID:             big.NewInt(int64(protocolSettings.ChainID)),
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
@@ -36,9 +36,14 @@ func NewEVM(bctx vm.BlockContext,
 		LondonBlock:         big.NewInt(0),
 		Ethash:              new(params.EthashConfig),
 	}
-	evm := vm.NewEVM(bctx, tctx, sdb, chainConfig, vm.Config{}, nativeContracts)
+	vmCfg := vm.Config{}
+	if tracer != nil {
+		vmCfg.Debug = true
+		vmCfg.Tracer = tracer
+	}
+	evm := vm.NewEVM(bctx, tctx, sdb, chainCfg, vmCfg, nativeContracts)
 	return &EVM{
 		EVM:         evm,
-		ChainConfig: chainConfig,
+		ChainConfig: chainCfg,
 	}
 }

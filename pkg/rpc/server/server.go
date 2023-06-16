@@ -133,6 +133,10 @@ var rpcHandlers = map[string]func(*Server, request.Params) (interface{}, *respon
 	"eth_feeHistory":                          (*Server).eth_feeHistory,
 	// -- end eth api
 
+	// -- start trace api
+	"trace_call": (*Server).trace_call,
+	// -- end trace api
+
 	// -- start gether api
 	"txpool_content": (*Server).txpool_content,
 	// -- end gether api
@@ -753,7 +757,7 @@ func (s *Server) eth_signTransaction(params request.Params) (interface{}, *respo
 	if err != nil {
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
 	}
-	ic, err := s.chain.GetTestVM(tx, fakeBlock)
+	ic, err := s.chain.GetTestVM(tx, fakeBlock, nil)
 	if err != nil {
 		if err != nil {
 			return nil, response.NewInternalServerError(fmt.Sprintf("Could not create execute context: %s", err), err)
@@ -812,7 +816,7 @@ func (s *Server) eth_sendTransaction(params request.Params) (interface{}, *respo
 	if err != nil {
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
 	}
-	ic, err := s.chain.GetTestVM(tx, fakeBlock)
+	ic, err := s.chain.GetTestVM(tx, fakeBlock, nil)
 	if err != nil {
 		if err != nil {
 			return nil, response.NewInternalServerError(fmt.Sprintf("Could not create execute context: %s", err), err)
@@ -885,7 +889,7 @@ func (s *Server) eth_call(params request.Params) (interface{}, *response.Error) 
 	if err != nil {
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
 	}
-	ic, err := s.chain.GetTestVM(tx, block)
+	ic, err := s.chain.GetTestVM(tx, block, nil)
 	if err != nil {
 		if err != nil {
 			return nil, response.NewInternalServerError(fmt.Sprintf("Could not create execute context: %s", err), err)
@@ -948,7 +952,7 @@ func (s *Server) eth_estimateGas(reqParams request.Params) (interface{}, *respon
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
 	}
 	fakeBlock := *block
-	ic, err := s.chain.GetTestVM(tx, &fakeBlock)
+	ic, err := s.chain.GetTestVM(tx, &fakeBlock, nil)
 	if err != nil {
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not create execute context: %s", err), err)
 	}
@@ -977,7 +981,7 @@ func (s *Server) eth_estimateGas(reqParams request.Params) (interface{}, *respon
 	// execute again to ensure gas
 	if tx.To() != nil {
 		for i := 0; i < int(params.CallCreateDepth) && big.NewInt(0).Mul(gasPrice, big.NewInt(int64(gas))).Cmp(balance) <= 0; i++ {
-			ic, err := s.chain.GetTestVM(tx, &fakeBlock)
+			ic, err := s.chain.GetTestVM(tx, &fakeBlock, nil)
 			if err != nil {
 				return nil, response.NewInternalServerError(fmt.Sprintf("Could not create execute context: %s", err), err)
 			}
@@ -1222,6 +1226,62 @@ func (s *Server) eth_feeHistory(_ request.Params) (interface{}, *response.Error)
 
 // -- end eth api.
 
+// -- start trace api
+
+func (s *Server) trace_call(params request.Params) (interface{}, *response.Error) {
+	param := params.Value(0)
+	if param == nil {
+		return nil, response.ErrInvalidParams
+	}
+	data := []byte(param.RawMessage)
+	txObj := result.TransactionObject{}
+	err := json.Unmarshal(data, &txObj)
+	if err != nil {
+		return nil, response.ErrInvalidParams
+	}
+	ltx := &types.LegacyTx{
+		Nonce:    s.chain.GetNonce(txObj.From) + 1,
+		GasPrice: s.chain.GetGasPrice(),
+		Gas:      txObj.Gas,
+		To:       txObj.To,
+		Value:    txObj.Value,
+		Data:     txObj.Data,
+	}
+	inner := &transaction.EthTx{
+		Transaction: *types.NewTx(ltx),
+		ChainID:     s.chainId,
+		Sender:      txObj.From,
+	}
+	tx := transaction.NewTx(inner)
+	block, _, err := s.chain.GetBlock(s.chain.CurrentBlockHash(), false)
+	if err != nil {
+		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
+	}
+	tracer := response.NewVMLogger()
+	ic, err := s.chain.GetTestVM(tx, block, tracer)
+	if err != nil {
+		if err != nil {
+			return nil, response.NewInternalServerError(fmt.Sprintf("Could not create execute context: %s", err), err)
+		}
+	}
+	var ret []byte
+	if inner.To() == nil {
+		ret, _, _, err = ic.VM.Create(ic, tx.Data(), TestGas, tx.Value())
+	} else {
+		ret, _, err = ic.VM.Call(ic, *tx.To(), tx.Data(), TestGas, tx.Value())
+	}
+	res := result.TraceResult{
+		Trace: tracer.Result(),
+		Ret:   hexutil.Bytes(ret),
+	}
+	if err != nil {
+		res.Err = err.Error()
+	}
+	return res, nil
+}
+
+// -- end trace api
+
 // -- start gether api
 
 func (s *Server) txpool_content(_ request.Params) (interface{}, *response.Error) {
@@ -1406,7 +1466,7 @@ func (s *Server) calculateGas(reqParams request.Params) (interface{}, *response.
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
 	}
 	fakeBlock := *block
-	ic, err := s.chain.GetTestVM(tx, &fakeBlock)
+	ic, err := s.chain.GetTestVM(tx, &fakeBlock, nil)
 	if err != nil {
 		if err != nil {
 			return nil, response.NewInternalServerError(fmt.Sprintf("Could not create execute context: %s", err), err)

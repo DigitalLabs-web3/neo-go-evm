@@ -49,7 +49,7 @@ func TestNativeContract(t *testing.T) {
 		BlockNumber: big.NewInt(1),
 		CanTransfer: func(vm.StateDB, common.Address, *big.Int) bool { return true },
 		Transfer:    func(vm.StateDB, common.Address, common.Address, *big.Int) {},
-	}, vm.TxContext{}, sd, config.ProtocolConfiguration{}, nil)
+	}, vm.TxContext{}, sd, config.ProtocolConfiguration{}, nil, nil)
 	data := []byte{0x00}
 	ret, left, err := vm.Call(testContractRef{Addr: common.BytesToAddress([]byte{})}, common.Address(cs.Contracts().Designate.Address), data, 0, big.NewInt(0))
 	assert.NoError(t, err)

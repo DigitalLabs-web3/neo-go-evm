@@ -37,7 +37,7 @@ type Context struct {
 	caller common.Address
 }
 
-func NewContext(block *block.Block, tx *transaction.Transaction, sdb *statedb.StateDB, chain Chain) (*Context, error) {
+func NewContext(block *block.Block, tx *transaction.Transaction, sdb *statedb.StateDB, chain Chain, tracer vm.EVMLogger) (*Context, error) {
 	ctx := &Context{
 		Chain:  chain,
 		Block:  block,
@@ -73,7 +73,7 @@ func NewContext(block *block.Block, tx *transaction.Transaction, sdb *statedb.St
 				nativeContract: chain.Contracts().Bridge,
 				ic:             ctx,
 			},
-		})
+		}, tracer)
 	return ctx, nil
 }
 

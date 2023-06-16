@@ -13,6 +13,7 @@ import (
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/vm"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -47,7 +48,7 @@ type Blockchainer interface {
 	GetStateModule() StateRoot
 	GetStorageItem(hash common.Address, key []byte) state.StorageItem
 	GetStorageItems(hash common.Address) ([]state.StorageItemWithKey, error)
-	GetTestVM(tx *transaction.Transaction, b *block.Block) (*interop.Context, error)
+	GetTestVM(tx *transaction.Transaction, b *block.Block, tracer vm.EVMLogger) (*interop.Context, error)
 	GetTransaction(common.Hash) (*transaction.Transaction, *types.Receipt, error)
 	mempool.Feer // fee interface
 	ManagementContractAddress() common.Address

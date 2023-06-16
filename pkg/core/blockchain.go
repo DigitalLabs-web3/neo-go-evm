@@ -27,6 +27,7 @@ import (
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/vm"
 	evm "github.com/DigitalLabs-web3/neo-go-evm/pkg/vm"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -692,7 +693,7 @@ func (bc *Blockchain) storeBlock(block *block.Block, txpool *mempool.Pool) error
 		blockGasUsed += tx.Gas()
 		netFee := transaction.CalculateNetworkFee(tx, bc.FeePerByte())
 		gas := tx.Gas() - netFee
-		ic, err := interop.NewContext(block, tx, sdb, bc)
+		ic, err := interop.NewContext(block, tx, sdb, bc, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -1416,11 +1417,11 @@ func (bc *Blockchain) IsBlocked(address common.Address) bool {
 }
 
 // GetTestVM returns an interop context with VM set up for a test run.
-func (bc *Blockchain) GetTestVM(tx *transaction.Transaction, b *block.Block) (*interop.Context, error) {
+func (bc *Blockchain) GetTestVM(tx *transaction.Transaction, b *block.Block, tracer vm.EVMLogger) (*interop.Context, error) {
 	cache := bc.dao.GetPrivate()
 	sdb := statedb.NewStateDB(cache, bc)
 	sdb.PrepareAccessList(tx.From(), tx.To(), evm.PrecompiledAddressesBerlin, tx.AccessList())
-	return interop.NewContext(b, tx, sdb, bc)
+	return interop.NewContext(b, tx, sdb, bc, tracer)
 }
 
 // Various witness verification errors.
