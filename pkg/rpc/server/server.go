@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"math/big"
 	"net"
 	"net/http"
 	"strconv"
@@ -86,7 +88,7 @@ const (
 	// connections.
 	maxSubscribers = 64
 
-	TestGas uint64 = 2000000000
+	TestGas uint64 = 250000000
 )
 
 var rpcHandlers = map[string]func(*Server, request.Params) (interface{}, *response.Error){
@@ -948,27 +950,54 @@ func (s *Server) eth_estimateGas(reqParams request.Params) (interface{}, *respon
 	fakeBlock := *block
 	ic, err := s.chain.GetTestVM(tx, &fakeBlock)
 	if err != nil {
-		if err != nil {
-			return nil, response.NewInternalServerError(fmt.Sprintf("Could not create execute context: %s", err), err)
-		}
+		return nil, response.NewInternalServerError(fmt.Sprintf("Could not create execute context: %s", err), err)
 	}
-	var left uint64
-	var ret []byte
+	var (
+		left uint64
+		ret  []byte
+		gas  uint64 = TestGas
+	)
+	if tx.Gas() != 0 {
+		gas = tx.Gas()
+	}
 	if tx.To() == nil {
-		ret, _, left, err = ic.VM.Create(ic, tx.Data(), TestGas, tx.Value())
+		ret, _, left, err = ic.VM.Create(ic, tx.Data(), gas, tx.Value())
 	} else {
-		ret, left, err = ic.VM.Call(ic, *tx.To(), tx.Data(), TestGas, tx.Value())
+		ret, left, err = ic.VM.Call(ic, *tx.To(), tx.Data(), gas, tx.Value())
 	}
 	if err != nil {
 		return nil, response.NewRPCError(fmt.Sprintf("Could not executing data: %s", err), hexutil.Encode(ret), err)
 	}
-	gas := TestGas - left
+	gas = gas - left
+	balance := s.chain.GetUtilityTokenBalance(tx.From())
+	gasPrice := s.chain.GetGasPrice()
+	if tx.GasPrice().Cmp(gasPrice) > 0 {
+		gasPrice = tx.GasPrice()
+	}
+	// execute again to ensure gas
+	if tx.To() != nil {
+		for i := 0; i < int(params.CallCreateDepth) && big.NewInt(0).Mul(gasPrice, big.NewInt(int64(gas))).Cmp(balance) <= 0; i++ {
+			ic, err := s.chain.GetTestVM(tx, &fakeBlock)
+			if err != nil {
+				return nil, response.NewInternalServerError(fmt.Sprintf("Could not create execute context: %s", err), err)
+			}
+			_, _, err = ic.VM.Call(ic, *tx.To(), tx.Data(), gas, tx.Value())
+			if err == nil {
+				s.log.Debug("estimate gas try", zap.Int("count", i))
+				break
+			}
+			gas += uint64(float64(params.SstoreSentryGasEIP2200) * math.Pow(1.015625, float64(i)))
+		}
+		if err != nil {
+			return nil, response.NewRPCError("Could not estimate gas", hexutil.EncodeUint64(gas), err)
+		}
+	}
 	feePerByte := s.chain.GetFeePerByte()
 	netfee := transaction.CalculateNetworkFee(tx, feePerByte)
 	if err != nil {
 		return nil, response.NewInvalidRequestError(fmt.Sprintf("Could not calculate network fee: %s", err), err)
 	}
-	gas += netfee + params.SstoreSentryGasEIP2200
+	gas += netfee
 	return hexutil.EncodeUint64(gas), nil
 }
 

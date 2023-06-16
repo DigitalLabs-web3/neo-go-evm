@@ -4,7 +4,7 @@ ProtocolConfiguration:
   InitialGASSupply: 100000000
   KeepOnlyLatestState: false
   MaxBlockSize: 262144
-  MaxBlockGas: 900000000000
+  MaxBlockGas: 250000000
   MaxTransactionsPerBlock: 512
   SecondsPerBlock: 15
   MemPoolSize: 50000
