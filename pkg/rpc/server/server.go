@@ -686,7 +686,7 @@ func (s *Server) eth_getCode(params request.Params) (interface{}, *response.Erro
 	}
 	cs := s.chain.GetContractState(addr)
 	if cs == nil {
-		return nil, nil
+		return hexutil.Bytes{}, nil
 	}
 	return hexutil.Encode(cs.Code), nil
 }
