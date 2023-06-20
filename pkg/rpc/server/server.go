@@ -990,7 +990,12 @@ func (s *Server) eth_estimateGas(reqParams request.Params) (interface{}, *respon
 				s.log.Debug("estimate gas try", zap.Int("count", i))
 				break
 			}
-			gas += uint64(float64(params.SstoreSentryGasEIP2200) * math.Pow(1.015625, float64(i)))
+			if i == 0 {
+				gas += params.SstoreSentryGasEIP2200
+			} else {
+				gas = uint64(float64(gas) * math.Pow(1.015625, float64(i)))
+			}
+
 		}
 		if err != nil {
 			return nil, response.NewRPCError("Could not estimate gas", hexutil.EncodeUint64(gas), err)
