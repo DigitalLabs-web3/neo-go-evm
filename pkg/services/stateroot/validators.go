@@ -111,9 +111,9 @@ func (s *service) sendVote(ir *incompleteRoot) {
 		s.chain.HeaderHeight() >= ir.myVote.ValidBlockEnd {
 		return
 	}
-	s.relayExtensible(ir.myVote)
 	delay := firstVoteResendDelay
 	if ir.retries > 0 {
+		s.relayExtensible(ir.myVote)
 		delay = s.timePerBlock << ir.retries
 	}
 	_ = time.AfterFunc(delay, func() {
