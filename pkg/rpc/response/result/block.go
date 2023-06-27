@@ -46,7 +46,7 @@ type (
 		GasLimit        hexutil.Uint64 `json:"gasLimit"`
 		GasUsed         hexutil.Uint64 `json:"gasUsed"`
 		Uncles          []common.Hash  `json:"uncles"`
-		BaseFeePerGas   hexutil.Uint64 `json:"baseFeePerGas"`
+		BaseFeePerGas   *hexutil.Big   `json:"baseFeePerGas,omitempty"`
 	}
 )
 
