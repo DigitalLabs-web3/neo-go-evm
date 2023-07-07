@@ -57,6 +57,8 @@ type Pool struct {
 	verifiedTxes items
 	fees         map[common.Address]utilityBalanceAndFees
 
+	pendingNonces map[common.Address]uint64
+
 	capacity   int
 	feePerByte uint64
 	payerIndex int
@@ -175,13 +177,12 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 		pItem.data = data[0]
 	}
 	mp.lock.Lock()
+	defer mp.lock.Unlock()
 	if mp.containsKey(t.Hash()) {
-		mp.lock.Unlock()
 		return ErrDup
 	}
 	conflict, err := mp.checkTxConflicts(t, fee)
 	if err != nil {
-		mp.lock.Unlock()
 		return err
 	}
 	if conflict != nil {
@@ -201,7 +202,6 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 	if len(mp.verifiedTxes) == mp.capacity {
 		// Less prioritized than the least prioritized we already have, won't fit.
 		if n == len(mp.verifiedTxes) {
-			mp.lock.Unlock()
 			return ErrOOM
 		}
 		// Ditch the last one.
@@ -218,6 +218,7 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 		}
 	} else {
 		mp.verifiedTxes = append(mp.verifiedTxes, pItem)
+		mp.pendingNonces[t.From()] = t.Nonce() + 1
 	}
 	if n != len(mp.verifiedTxes)-1 {
 		copy(mp.verifiedTxes[n+1:], mp.verifiedTxes[n:])
@@ -238,6 +239,13 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 		}
 	}
 	return nil
+}
+
+// get pending nonce of from
+func (mp *Pool) PendingNonce(addr common.Address) uint64 {
+	mp.lock.Lock()
+	defer mp.lock.Unlock()
+	return mp.pendingNonces[addr]
 }
 
 // Remove removes an item from the mempool, if it exists there (and does

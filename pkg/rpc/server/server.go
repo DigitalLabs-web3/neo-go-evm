@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -629,6 +630,13 @@ func (s *Server) eth_getTransactionCount(params request.Params) (interface{}, *r
 	if err != nil {
 		return nil, response.NewInvalidParamsError(err.Error(), err)
 	}
+	if params.Value(1) != nil {
+		val, _ := params.Value(1).GetString()
+		if strings.ToLower(val) == "pending" {
+			return hexutil.EncodeUint64(s.chain.GetPendingNonce(addr)), nil
+		}
+	}
+
 	return hexutil.EncodeUint64(s.chain.GetNonce(addr)), nil
 }
 
@@ -742,7 +750,7 @@ func (s *Server) eth_signTransaction(params request.Params) (interface{}, *respo
 		return nil, response.NewInternalServerError("Could not found account to sign tx", errors.New("account not found"))
 	}
 	ltx := &types.LegacyTx{
-		Nonce: s.chain.GetNonce(txObj.From) + 1,
+		Nonce: txObj.Nonce,
 		To:    txObj.To,
 		Value: txObj.Value,
 		Data:  txObj.Data,
@@ -800,12 +808,16 @@ func (s *Server) eth_sendTransaction(params request.Params) (interface{}, *respo
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not found accout to sign tx: %s", err), errors.New("account not found"))
 	}
 	ltx := &types.LegacyTx{
-		Nonce:    s.chain.GetNonce(txObj.From),
+		Nonce:    txObj.Nonce,
 		GasPrice: s.chain.GetGasPrice(),
 		To:       txObj.To,
 		Value:    txObj.Value,
 		Data:     txObj.Data,
 	}
+	if ltx.Nonce == 0 {
+		ltx.Nonce = s.chain.GetPendingNonce(txObj.From)
+	}
+
 	inner := &transaction.EthTx{
 		Transaction: *types.NewTx(ltx),
 		ChainID:     s.chainId,
@@ -872,13 +884,17 @@ func (s *Server) eth_call(params request.Params) (interface{}, *response.Error) 
 		return nil, response.ErrInvalidParams
 	}
 	ltx := &types.LegacyTx{
-		Nonce:    s.chain.GetNonce(txObj.From) + 1,
+		Nonce:    txObj.Nonce,
 		GasPrice: s.chain.GetGasPrice(),
 		Gas:      txObj.Gas,
 		To:       txObj.To,
 		Value:    txObj.Value,
 		Data:     txObj.Data,
 	}
+	if ltx.Nonce == 0 {
+		ltx.Nonce = s.chain.GetPendingNonce(txObj.From)
+	}
+
 	inner := &transaction.EthTx{
 		Transaction: *types.NewTx(ltx),
 		ChainID:     s.chainId,
@@ -918,12 +934,15 @@ func (s *Server) eth_estimateGas(reqParams request.Params) (interface{}, *respon
 	var tx *transaction.Transaction
 	if txObj.Witness == nil {
 		ltx := &types.LegacyTx{
-			Nonce:    s.chain.GetNonce(txObj.From) + 1,
+			Nonce:    txObj.Nonce,
 			GasPrice: s.chain.GetGasPrice(),
 			Gas:      txObj.Gas,
 			To:       txObj.To,
 			Value:    txObj.Value,
 			Data:     txObj.Data,
+		}
+		if ltx.Nonce == 0 {
+			ltx.Nonce = s.chain.GetPendingNonce(txObj.From)
 		}
 		inner := &transaction.EthTx{
 			Transaction: *types.NewTx(ltx),
@@ -933,7 +952,7 @@ func (s *Server) eth_estimateGas(reqParams request.Params) (interface{}, *respon
 		tx = transaction.NewTx(inner)
 	} else {
 		inner := &transaction.NeoTx{
-			Nonce:    s.chain.GetNonce(txObj.From) + 1,
+			Nonce:    txObj.Nonce,
 			From:     txObj.From,
 			GasPrice: s.chain.GetGasPrice(),
 			Gas:      txObj.Gas,
@@ -942,6 +961,10 @@ func (s *Server) eth_estimateGas(reqParams request.Params) (interface{}, *respon
 			Data:     txObj.Data,
 			Witness:  *txObj.Witness,
 		}
+		if inner.Nonce == 0 {
+			inner.Nonce = s.chain.GetPendingNonce(txObj.From)
+		}
+
 		if len(inner.Witness.VerificationScript) == 0 {
 			return nil, response.NewInvalidParamsError("missing verification script", nil)
 		}
@@ -1245,13 +1268,17 @@ func (s *Server) trace_call(params request.Params) (interface{}, *response.Error
 		return nil, response.ErrInvalidParams
 	}
 	ltx := &types.LegacyTx{
-		Nonce:    s.chain.GetNonce(txObj.From) + 1,
+		Nonce:    txObj.Nonce,
 		GasPrice: s.chain.GetGasPrice(),
 		Gas:      txObj.Gas,
 		To:       txObj.To,
 		Value:    txObj.Value,
 		Data:     txObj.Data,
 	}
+	if ltx.Nonce == 0 {
+		ltx.Nonce = s.chain.GetPendingNonce(txObj.From)
+	}
+
 	inner := &transaction.EthTx{
 		Transaction: *types.NewTx(ltx),
 		ChainID:     s.chainId,

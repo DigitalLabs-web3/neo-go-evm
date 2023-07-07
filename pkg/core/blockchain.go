@@ -1292,7 +1292,7 @@ func (bc *Blockchain) verifyAndPoolTx(t *transaction.Transaction, pool *mempool.
 	}
 
 	from := t.From()
-	nonce := bc.GetNonce(from)
+	nonce := bc.GetPendingNonce(from)
 	if t.Nonce() != nonce {
 		return fmt.Errorf("invalid nonce, addr=%s, nonce=%d, expect=%d", t.From(), t.Nonce(), nonce)
 	}
@@ -1349,9 +1349,9 @@ func (bc *Blockchain) IsTxStillRelevant(t *transaction.Transaction, txpool *memp
 	} else if txpool.HasConflicts(t, bc) {
 		return false
 	}
-	if bc.GetNonce(t.From()) != t.Nonce() {
-		return false
-	}
+	// if bc.GetNonce(t.From()) != t.Nonce() {
+	// 	return false
+	// }
 	if recheckWitness {
 		return t.Verify(bc.config.ChainID) == nil
 	}
@@ -1489,6 +1489,14 @@ func (bc *Blockchain) Contracts() *native.Contracts {
 
 func (bc *Blockchain) GetNonce(addr common.Address) uint64 {
 	return bc.contracts.Ledger.GetNonce(bc.dao, addr)
+}
+
+func (bc *Blockchain) GetPendingNonce(addr common.Address) uint64 {
+	pendingNonce := bc.memPool.PendingNonce(addr)
+	if pendingNonce == 0 {
+		pendingNonce = bc.contracts.Ledger.GetNonce(bc.dao, addr)
+	}
+	return pendingNonce
 }
 
 func (bc *Blockchain) GetLogs(filter *filters.LogFilter) ([]*types.Log, error) {
