@@ -1,22 +1,27 @@
 ProtocolConfiguration:
-  ChainID: 153
+  ChainID: 2970385
   MaxTraceableBlocks: 2102400
-  InitialGASSupply: 100000000
+  InitialGASSupply: 1000
   KeepOnlyLatestState: false
   MaxBlockSize: 262144
-  MaxBlockGas: 250000000
+  MaxBlockGas: 900000000000
   MaxTransactionsPerBlock: 512
   SecondsPerBlock: 15
   MemPoolSize: 50000
   StandbyValidators:
-    - 02a958dcbdda5fe1176fb6c76635f37ddccc50dd138496708007821db8c80f3935
+    - 028e5d4f8e87e97a45c3bfc1146b8d810fbd58577a07d00c0cb7f07b78638aa637
+    - 03efb3059e7ea113f221d01ee1445ff56a14b22ceeb62ce77b98ef00eea16dbdef
+    - 022db5e20a60aff0f61e28e3ea0e42c751b611a57325c252acd7de83961f8f71a0
   SeedList:
-    - seed1t.ngd.network:20333
-  VerifyBlocks: true
+    - evm.ngd.network:31333
+    - evm.ngd.network:32333
+    - evm.ngd.network:33333
+    - evm.ngd.network:34443
+  VerifyBlocks: false
   VerifyTransactions: false
   MainNetwork: 894710606
-  MainStandbyStateValidatorsScriptHash: ""
-  BridgeContractId: 1
+  MainStandbyStateValidatorsScriptHash: "c9839528f68ec9b8e83a3fd2893bd4d4409760fa"
+  BridgeContractId: 791
 
 ApplicationConfiguration:
   # LogPath could be set up in case you need stdout logs to some proper file.
@@ -29,18 +34,18 @@ ApplicationConfiguration:
   #      FilePath: "./chains/testnet.bolt"
   #  Uncomment in order to set up custom address for node.
   #  Address: 127.0.0.1
-  NodePort: 20333
+  NodePort: 31333
   Relay: true
   DialTimeout: 3
   ProtoTickInterval: 2
   PingInterval: 30
   PingTimeout: 90
   MaxPeers: 100
-  AttemptConnPeers: 10
-  MinPeers: 1
+  AttemptConnPeers: 3
+  MinPeers: 3 
   UnlockWallet:
-    Path: "wallet.json"
-    Password: "pass"
+    Path: ""
+    Password: ""
   StateRoot:
     Enabled: false
     UnlockWallet:
@@ -50,7 +55,7 @@ ApplicationConfiguration:
     Enabled: true
     MaxGasInvoke: 15
     EnableCORSWorkaround: false
-    Port: 20332
+    Port: 8545
     TLSConfig:
       Enabled: false
       Port: 20301
