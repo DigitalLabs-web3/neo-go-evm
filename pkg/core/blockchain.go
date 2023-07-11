@@ -1349,9 +1349,11 @@ func (bc *Blockchain) IsTxStillRelevant(t *transaction.Transaction, txpool *memp
 	} else if txpool.HasConflicts(t, bc) {
 		return false
 	}
-	// if bc.GetNonce(t.From()) != t.Nonce() {
-	// 	return false
-	// }
+	// check nonce continuity
+	if !txpool.CheckNonceContinue(t, bc.GetNonce(t.From())) {
+		return false
+	}
+
 	if recheckWitness {
 		return t.Verify(bc.config.ChainID) == nil
 	}
