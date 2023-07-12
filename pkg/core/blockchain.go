@@ -1292,9 +1292,9 @@ func (bc *Blockchain) verifyAndPoolTx(t *transaction.Transaction, pool *mempool.
 	}
 
 	from := t.From()
-	nonce := bc.GetPendingNonce(from)
-	if t.Nonce() != nonce {
-		return fmt.Errorf("invalid nonce, addr=%s, nonce=%d, expect=%d", t.From(), t.Nonce(), nonce)
+	// we should allow user to replace tx with higher gas price, so allow all tx form db nonce to pending nonce
+	if !pool.CheckNonceContinue(t, bc.GetNonce(from)) {
+		return fmt.Errorf("invalid nonce, addr=%s, nonce=%d, pending nonce=%d", t.From(), t.Nonce(), pool.PendingNonce(from))
 	}
 
 	if err := bc.PolicyCheck(t); err != nil {
@@ -1496,7 +1496,7 @@ func (bc *Blockchain) GetNonce(addr common.Address) uint64 {
 func (bc *Blockchain) GetPendingNonce(addr common.Address) uint64 {
 	pendingNonce := bc.memPool.PendingNonce(addr)
 	if pendingNonce == 0 {
-		pendingNonce = bc.contracts.Ledger.GetNonce(bc.dao, addr)
+		pendingNonce = bc.GetNonce(addr)
 	}
 	return pendingNonce
 }
