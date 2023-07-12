@@ -59,6 +59,7 @@ type Pool struct {
 
 	capacity   int
 	feePerByte uint64
+	gasPrice   *big.Int
 	payerIndex int
 
 	resendThreshold uint32
@@ -325,20 +326,23 @@ func (mp *Pool) RemoveStale(isOK func(*transaction.Transaction) bool, feer Feer)
 // loadPolicy updates feePerByte field and returns whether policy has been
 // changed.
 func (mp *Pool) loadPolicy(feer Feer) bool {
+	changed := false
 	newFeePerByte := feer.FeePerByte()
+	newGasPrice := feer.GetGasPrice()
 	if newFeePerByte > mp.feePerByte {
 		mp.feePerByte = newFeePerByte
-		return true
+		changed = true
 	}
-	return false
+	if mp.gasPrice == nil || newGasPrice.Cmp(mp.gasPrice) != 0 {
+		mp.gasPrice = newGasPrice
+		changed = true
+	}
+	return changed
 }
 
 // checkPolicy checks whether transaction fits policy.
 func (mp *Pool) checkPolicy(tx *transaction.Transaction, policyChanged bool) bool {
-	if !policyChanged || tx.FeePerByte() >= mp.feePerByte {
-		return true
-	}
-	return false
+	return !policyChanged || (tx.FeePerByte() >= mp.feePerByte && tx.GasPrice().Cmp(mp.gasPrice) >= 0)
 }
 
 // New returns a new Pool struct.
