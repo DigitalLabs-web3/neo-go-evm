@@ -30,11 +30,12 @@ func (f *LogFilter) Match(l *types.Log) bool {
 			return false
 		}
 	}
+
 	if len(f.Topics) > 0 {
 		for _, topic := range f.Topics {
 			for _, t := range l.Topics {
-				if topic != t {
-					return false
+				if topic == t {
+					return true
 				}
 			}
 		}
