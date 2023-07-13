@@ -9,8 +9,8 @@ import (
 )
 
 type LogFilter struct {
-	FromBlock uint32
-	ToBlock   uint32
+	FromBlock uint64
+	ToBlock   uint64
 	Blockhash common.Hash
 	Address   common.Address
 	Topics    []common.Hash
@@ -61,16 +61,20 @@ func (f *LogFilter) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	fromBlock, err := hexutil.DecodeUint64(lf.FromBlock)
-	if err != nil {
-		return err
+	if lf.FromBlock != "" {
+		fromBlock, err := hexutil.DecodeUint64(lf.FromBlock)
+		if err != nil {
+			return err
+		}
+		f.FromBlock = fromBlock
 	}
-	f.FromBlock = uint32(fromBlock)
-	toBlock, err := hexutil.DecodeUint64(lf.ToBlock)
-	if err != nil {
-		return err
+	if lf.ToBlock != "" {
+		toBlock, err := hexutil.DecodeUint64(lf.ToBlock)
+		if err != nil {
+			return err
+		}
+		f.ToBlock = toBlock
 	}
-	f.ToBlock = uint32(toBlock)
 	f.Blockhash = lf.Blockhash
 	f.Address = lf.Address
 	f.Topics = lf.Topics
