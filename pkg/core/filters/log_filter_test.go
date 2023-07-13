@@ -16,6 +16,16 @@ func TestLogFilterJson(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(lf.Topics))
 
+	k := `{
+		"fromBlock": "0x6d9"
+	  }`
+	lf1 := &LogFilter{}
+	err = lf1.UnmarshalJSON([]byte(k))
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(lf1.Topics))
+	assert.Equal(t, uint64(1753), lf1.FromBlock)
+	assert.Equal(t, uint64(0), lf1.ToBlock)
+
 	f := `{
 		"blockHash": "0x6d9a51b80a7d82e4396e6b92bd1aadfeba61e843593865beace6ce01f6c6042f"
 	  }`
