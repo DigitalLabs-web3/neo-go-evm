@@ -20,20 +20,26 @@ func (f *LogFilter) Match(l *types.Log) bool {
 	if f.Blockhash != (common.Hash{}) && l.BlockHash != f.Blockhash {
 		return false
 	}
-	if f.Blockhash == (common.Hash{}) && (l.BlockNumber < uint64(f.FromBlock) || l.BlockNumber >= uint64(f.ToBlock)) {
-		return false
+	if f.FromBlock != 0 && f.ToBlock != 0 {
+		if f.Blockhash == (common.Hash{}) && (l.BlockNumber < uint64(f.FromBlock) || l.BlockNumber >= uint64(f.ToBlock)) {
+			return false
+		}
 	}
-	if l.Address != f.Address {
-		return false
+	if f.Address != (common.Address{}) {
+		if l.Address != f.Address {
+			return false
+		}
 	}
-	for _, topic := range f.Topics {
-		for _, t := range l.Topics {
-			if topic == t {
-				return true
+	if len(f.Topics) > 0 {
+		for _, topic := range f.Topics {
+			for _, t := range l.Topics {
+				if topic != t {
+					return false
+				}
 			}
 		}
 	}
-	return false
+	return true
 }
 
 type logFilterJSON struct {
