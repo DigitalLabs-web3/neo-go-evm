@@ -1202,7 +1202,7 @@ func (s *Server) eth_getLogs(params request.Params) (interface{}, *response.Erro
 	}
 	data := []byte(param.RawMessage)
 	filter := &filters.LogFilter{}
-	err := json.Unmarshal(data, filter)
+	err := filter.UnmarshalJSON(data)
 	if err != nil {
 		return nil, response.ErrInvalidParams
 	}
