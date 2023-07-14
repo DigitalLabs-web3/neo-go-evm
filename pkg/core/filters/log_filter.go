@@ -25,21 +25,21 @@ func (f *LogFilter) Match(l *types.Log) bool {
 			return false
 		}
 	}
+
 	if f.Address != (common.Address{}) {
 		if l.Address != f.Address {
 			return false
 		}
 	}
 
-	if len(f.Topics) > 0 {
-		for _, topic := range f.Topics {
-			for _, t := range l.Topics {
-				if topic == t {
-					return true
-				}
+	for _, topic := range f.Topics {
+		for _, t := range l.Topics {
+			if topic == t {
+				return true
 			}
 		}
 	}
+
 	return true
 }
 
