@@ -239,10 +239,7 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 	}
 	// we already checked balance in checkTxConflicts, so don't need to check again
 	mp.tryAddSendersFee(pItem.txn, fee, false)
-
 	updateMempoolMetrics(len(mp.verifiedTxes))
-	mp.lock.Unlock()
-
 	if mp.subscriptionsOn.Load() {
 		mp.events <- mempoolevent.Event{
 			Type: mempoolevent.TransactionAdded,
@@ -416,6 +413,7 @@ func New(capacity int, payerIndex int, enableSubscriptions bool) *Pool {
 	mp := &Pool{
 		verifiedMap:          make(map[common.Hash]*transaction.Transaction, capacity),
 		senderMap:            make(map[common.Address]map[uint64]*poolItem, capacity/2),
+		pendingNonces:        make(map[common.Address]uint64, capacity/2),
 		verifiedTxes:         make([]poolItem, 0, capacity),
 		capacity:             capacity,
 		payerIndex:           payerIndex,
