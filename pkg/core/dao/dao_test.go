@@ -14,8 +14,7 @@ import (
 
 func TestStoreTx(t *testing.T) {
 	d := NewSimple(storage.NewMemoryStore())
-	ethtx, _ := transaction.NewEthTx(types.NewTx(&types.LegacyTx{}))
-	tx := transaction.NewTx(ethtx)
+	tx, _ := transaction.NewTx(types.NewTx(&types.LegacyTx{}))
 	receipt := &types.Receipt{}
 	err := d.StoreAsTransaction(tx, receipt)
 	assert.NoError(t, err)

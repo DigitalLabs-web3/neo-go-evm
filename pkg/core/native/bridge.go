@@ -49,8 +49,8 @@ const (
 	ValidatorsKey                    = 0x02
 	PrefixMainStateValidatorsAddress = 0x03
 	PrefixDepositId                  = 0x04
-	LockIdKey                        = 0x05
-	PrefixLock                       = 0x06
+	BurnIdKey                        = 0x05
+	PrefixBurn                       = 0x06
 
 	JointHeadersKey    = 0x11
 	JointStateRootsKey = 0x12
@@ -87,6 +87,8 @@ type Bridge struct {
 }
 
 func NewBridge(cs *Contracts, cfg config.ProtocolConfiguration) *Bridge {
+	standbyStateConsensus := common.HexToAddress(cfg.MainStandbyStateValidatorsScriptHash)
+	slice.Reverse(standbyStateConsensus[:])
 	d := &Bridge{
 		NativeContract: state.NativeContract{
 			Name: nativenames.Bridge,
@@ -98,7 +100,7 @@ func NewBridge(cs *Contracts, cfg config.ProtocolConfiguration) *Bridge {
 		},
 		cs:                                   cs,
 		standbyValidators:                    cfg.StandbyValidators,
-		mainStandbyStateValidatorsScriptHash: common.HexToAddress(cfg.MainStandbyStateValidatorsScriptHash),
+		mainStandbyStateValidatorsScriptHash: standbyStateConsensus,
 		mainBridgeContractId:                 cfg.BridgeContractId,
 		mainNetwork:                          cfg.MainNetwork,
 	}
@@ -127,8 +129,8 @@ func createDepositIdKey(depositId []byte) []byte {
 	return append([]byte{PrefixDepositId}, depositId...)
 }
 
-func createLockKey(lockId []byte) []byte {
-	return append([]byte{PrefixLock}, lockId...)
+func createBurnKey(lockId []byte) []byte {
+	return append([]byte{PrefixBurn}, lockId...)
 }
 
 func (b *Bridge) ContractCall_syncHeader(ic InteropContext, rawHeader []byte) error {
@@ -246,6 +248,7 @@ func (b *Bridge) ContractCall_syncValidators(
 	b.saveValidatorsSyncedIndex(ic, headerIndex)
 	b.cs.Designate.designateAsRole(ic, noderoles.Validator, mstate.pks)
 	b.cs.Designate.designateAsRole(ic, noderoles.StateValidator, mstate.pks)
+	log(ic, b.Address, mstate.pks.Bytes(), b.Abi.Events["syncValidators"].ID, txHash)
 	return nil
 }
 
@@ -290,7 +293,7 @@ func (b *Bridge) ContractCall_requestMint(
 	if err != nil {
 		return err
 	}
-	log(ic, b.Address, mintAmount.Bytes(), txHash, common.BytesToHash(ds.to[:]))
+	log(ic, b.Address, mintAmount.Bytes(), b.Abi.Events["requestMint"].ID, txHash, common.BytesToHash(ds.to[:]))
 	return nil
 }
 
@@ -311,34 +314,36 @@ func (b *Bridge) GetMinted(d *dao.Simple, depositId int64) (common.Hash, error) 
 	return state.mintTx, nil
 }
 
-func (b *Bridge) newLockId(d *dao.Simple) []byte {
+func (b *Bridge) newBurnId(d *dao.Simple) []byte {
 	id := make([]byte, 8)
 	num := uint64(0)
-	oldId := d.GetStorageItem(b.Address, []byte{LockIdKey})
+	oldId := d.GetStorageItem(b.Address, []byte{BurnIdKey})
 	if len(oldId) > 0 {
 		num = binary.LittleEndian.Uint64(oldId) + 1
 	}
 	binary.LittleEndian.PutUint64(id, num)
-	d.PutStorageItem(b.Address, []byte{LockIdKey}, id)
+	d.PutStorageItem(b.Address, []byte{BurnIdKey}, id)
 	return id
 }
 
-func (b *Bridge) ContractCall_Payable_lock(ic InteropContext, to common.Address) error {
-	value := ic.Container().Value()
+func (b *Bridge) ContractCall_Payable_burn(ic InteropContext, to common.Address) error {
+	val := ic.Value()
+	value := &val
 	value = big.NewInt(0).Div(value, _10GWei)
 	if value.Cmp(MintThreashold) < 0 {
 		return ErrUnreachThreshold
 	}
-	from := ic.Container().From()
+	from := ic.Sender()
 	state := depositState{
 		txId:   ic.Container().Hash(),
 		from:   from,
 		to:     to,
 		amount: value.Uint64(),
 	}
-	ic.Dao().PutStorageItem(b.Address, createLockKey(b.newLockId(ic.Dao())), state.Bytes())
+	burnId := b.newBurnId(ic.Dao())
+	ic.Dao().PutStorageItem(b.Address, createBurnKey(burnId), state.Bytes())
 	b.cs.GAS.Burn(ic.Dao(), from, value)
-	log(ic, from, value.Bytes(), b.Abi.Events["lock"].ID, to.Hash())
+	log(ic, b.Address, value.Bytes(), b.Abi.Events["burn"].ID, to.Hash(), common.BytesToHash(burnId))
 	return nil
 }
 

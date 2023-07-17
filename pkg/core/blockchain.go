@@ -27,7 +27,6 @@ import (
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
-	"github.com/DigitalLabs-web3/neo-go-evm/pkg/vm"
 	evm "github.com/DigitalLabs-web3/neo-go-evm/pkg/vm"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -40,7 +39,7 @@ const (
 	headerBatchCount = 2000
 	version          = "0.2.5"
 
-	defaultInitialGAS                      = 52000000 //wei
+	defaultInitialGAS                      = 100 //ETH
 	defaultGCPeriod                        = 10000
 	defaultMemPoolSize                     = 50000
 	defaultP2PNotaryRequestPayloadPoolSize = 1000
@@ -174,9 +173,9 @@ func NewBlockchain(s storage.Store, cfg config.ProtocolConfiguration, log *zap.L
 		return nil, errors.New("empty logger")
 	}
 
-	if cfg.InitialGASSupply <= 0 {
-		cfg.InitialGASSupply = defaultInitialGAS
-		log.Info("initial gas supply is not set or wrong, setting default value", zap.Uint64("InitialGASSupply", cfg.InitialGASSupply))
+	if cfg.InitialGASPerValidator <= 0 {
+		cfg.InitialGASPerValidator = defaultInitialGAS
+		log.Info("initial gas supply is not set or wrong, setting default value", zap.Uint64("InitialGASSupply", cfg.InitialGASPerValidator))
 	}
 	if cfg.MemPoolSize <= 0 {
 		cfg.MemPoolSize = defaultMemPoolSize
@@ -742,6 +741,7 @@ func (bc *Blockchain) storeBlock(block *block.Block, txpool *mempool.Pool) error
 			logIndex++
 		}
 		aer := &types.Receipt{
+			Type:              tx.Type(),
 			BlockHash:         block.Hash(),
 			BlockNumber:       big.NewInt(int64(block.Index)),
 			TxHash:            tx.Hash(),
@@ -1417,7 +1417,7 @@ func (bc *Blockchain) IsBlocked(address common.Address) bool {
 }
 
 // GetTestVM returns an interop context with VM set up for a test run.
-func (bc *Blockchain) GetTestVM(tx *transaction.Transaction, b *block.Block, tracer vm.EVMLogger) (*interop.Context, error) {
+func (bc *Blockchain) GetTestVM(tx *transaction.Transaction, b *block.Block, tracer evm.EVMLogger) (*interop.Context, error) {
 	cache := bc.dao.GetPrivate()
 	sdb := statedb.NewStateDB(cache, bc)
 	sdb.PrepareAccessList(tx.From(), tx.To(), evm.PrecompiledAddressesBerlin, tx.AccessList())

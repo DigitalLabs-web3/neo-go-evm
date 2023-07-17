@@ -36,16 +36,16 @@ import (
 
 type NativeContract interface {
 	RequiredGas(input []byte) uint64                         // RequiredPrice calculates the contract gas use
-	Run(caller common.Address, input []byte) ([]byte, error) // Run runs the precompiled contract
+	Run(caller common.Address, input []byte, value *big.Int) ([]byte, error) // Run runs the precompiled contract
 }
 
-func RunNativeContract(p NativeContract, caller common.Address, input []byte, suppliedGas uint64) (ret []byte, remainingGas uint64, err error) {
+func RunNativeContract(p NativeContract, caller common.Address, input []byte, value *big.Int, suppliedGas uint64) (ret []byte, remainingGas uint64, err error) {
 	gasCost := p.RequiredGas(input)
 	if suppliedGas < gasCost {
 		return nil, 0, ErrOutOfGas
 	}
 	suppliedGas -= gasCost
-	output, err := p.Run(caller, input)
+	output, err := p.Run(caller, input, value)
 	return output, suppliedGas, err
 }
 
@@ -281,9 +281,10 @@ var (
 // modexpMultComplexity implements bigModexp multComplexity formula, as defined in EIP-198
 //
 // def mult_complexity(x):
-//    if x <= 64: return x ** 2
-//    elif x <= 1024: return x ** 2 // 4 + 96 * x - 3072
-//    else: return x ** 2 // 16 + 480 * x - 199680
+//
+//	if x <= 64: return x ** 2
+//	elif x <= 1024: return x ** 2 // 4 + 96 * x - 3072
+//	else: return x ** 2 // 16 + 480 * x - 199680
 //
 // where is x is max(length_of_MODULUS, length_of_BASE)
 func modexpMultComplexity(x *big.Int) *big.Int {

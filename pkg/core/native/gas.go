@@ -27,13 +27,13 @@ var (
 
 type GAS struct {
 	state.NativeContract
-	cs            *Contracts
-	symbol        string
-	decimals      int64
-	initialSupply uint64
+	cs                  *Contracts
+	symbol              string
+	decimals            int64
+	initialPerValidator uint64
 }
 
-func NewGAS(cs *Contracts, init uint64) *GAS {
+func NewGAS(cs *Contracts, initialPerVal uint64) *GAS {
 	g := &GAS{
 		NativeContract: state.NativeContract{
 			Name: nativenames.GAS,
@@ -43,8 +43,8 @@ func NewGAS(cs *Contracts, init uint64) *GAS {
 				Code:     GASAddress[:],
 			},
 		},
-		cs:            cs,
-		initialSupply: init,
+		cs:                  cs,
+		initialPerValidator: initialPerVal,
 	}
 
 	g.symbol = "GAS"
@@ -62,28 +62,17 @@ func makeAccountKey(h common.Address) []byte {
 	return makeAddressKey(prefixAccount, h)
 }
 
-func (g *GAS) ContractCall_initialize(ic InteropContext) error {
-	if ic.PersistingBlock() == nil || ic.PersistingBlock().Index != 0 {
-		return ErrInitialize
-	}
+func (g *GAS) Initialize(d *dao.Simple) error {
 	validators := g.cs.Designate.StandbyValidators
-	var addr common.Address
-	if validators.Len() == 1 {
-		addr = validators[0].Address()
-	} else {
-		script, err := validators.CreateDefaultMultiSigRedeemScript()
+	eth := big.NewInt(1).Exp(big.NewInt(10), big.NewInt(GASDecimal), nil)
+	gasPerValidator := big.NewInt(1).Mul(big.NewInt(int64(g.initialPerValidator)), eth)
+	for _, v := range validators {
+		err := g.addTokens(d, v.Address(), gasPerValidator)
 		if err != nil {
 			return err
 		}
-		addr = hash.Hash160(script)
 	}
-	wei := big.NewInt(1).Exp(big.NewInt(10), big.NewInt(GASDecimal), nil)
-	total := big.NewInt(1).Mul(big.NewInt(int64(g.initialSupply)), wei)
-	err := g.addTokens(ic.Dao(), addr, total)
-	if err == nil {
-		log(ic, g.Address, total.Bytes(), g.Abi.Events["initialize"].ID)
-	}
-	return err
+	return nil
 }
 
 func (g *GAS) OnPersist(d *dao.Simple, block *block.Block) error {

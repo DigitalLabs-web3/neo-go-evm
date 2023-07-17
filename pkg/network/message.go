@@ -160,7 +160,8 @@ func (m *Message) decodePayload() error {
 	case CMDHeaders:
 		p = &payload.Headers{}
 	case CMDTX:
-		p, err := transaction.NewTransactionFromBytes(buf)
+		tx := new(transaction.Transaction)
+		err := io.FromByteArray(tx, buf)
 		if err != nil {
 			return err
 		}

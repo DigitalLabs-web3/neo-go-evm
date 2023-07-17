@@ -12,6 +12,7 @@ import (
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/block"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/util/slice"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 )
@@ -172,4 +173,12 @@ func TestContractId(t *testing.T) {
 	assert.NoError(t, err)
 	id := contractId(key)
 	assert.Equal(t, int32(-8), id)
+}
+
+func TestStandbyScriptHash(t *testing.T) {
+	main := "0x8799dd1065f88dec7e265a12334677ec944febdc"
+	b := common.HexToAddress(main)
+	t.Log(hex.EncodeToString(b[:]))
+	slice.Reverse(b[:])
+	t.Log(b)
 }

@@ -1,7 +1,6 @@
 package client
 
 import (
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -28,7 +27,7 @@ func (c *Client) IsBlocked(address common.Address) (bool, error) {
 	return resp, nil
 }
 
-func (c *Client) CalculateGas(tx *transaction.NeoTx) (uint64, error) {
+func (c *Client) CalculateGas(tx *transaction.Transaction) (uint64, error) {
 	b, err := tx.Bytes()
 	if err != nil {
 		return 0, err
@@ -82,11 +81,10 @@ func (c *Client) getBlock(params request.RawParams) (*block.Block, error) {
 	if err = c.performRequest("getblock", params, &resp); err != nil {
 		return nil, err
 	}
-	r := io.NewBinReaderFromBuf(resp)
-	b = block.New()
-	b.DecodeBinary(r)
-	if r.Err != nil {
-		return nil, r.Err
+	b = new(block.Block)
+	err = io.FromByteArray(b, resp)
+	if err != nil {
+		return nil, err
 	}
 	return b, nil
 }
@@ -285,104 +283,6 @@ func (c *Client) GetNativeContracts() ([]state.NativeContract, error) {
 	return resp, nil
 }
 
-// GetERC721Balances is a wrapper for getERC721balances RPC.
-func (c *Client) GetERC721Balances(address common.Address) (*result.ERC721Balances, error) {
-	params := request.NewRawParams(address.String())
-	resp := new(result.ERC721Balances)
-	if err := c.performRequest("getERC721balances", params, resp); err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
-
-// GetERC20Balances is a wrapper for getERC20balances RPC.
-func (c *Client) GetERC20Balances(address common.Address) (*result.ERC20Balances, error) {
-	params := request.NewRawParams(address.String())
-	resp := new(result.ERC20Balances)
-	if err := c.performRequest("getERC20balances", params, resp); err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
-
-// GetERC721Properties is a wrapper for getERC721properties RPC. We recommend using
-// ERC721Properties method instead of this to receive and work with proper VM types,
-// this method is provided mostly for the sake of completeness. For well-known
-// attributes like "description", "image", "name" and "tokenURI" it returns strings,
-// while for all other ones []byte (which can be nil).
-func (c *Client) GetERC721Properties(asset common.Address, token []byte) (map[string]interface{}, error) {
-	params := request.NewRawParams(asset.String(), hex.EncodeToString(token))
-	resp := make(map[string]interface{})
-	if err := c.performRequest("getERC721properties", params, &resp); err != nil {
-		return nil, err
-	}
-	for k, v := range resp {
-		if v == nil {
-			continue
-		}
-		str, ok := v.(string)
-		if !ok {
-			return nil, errors.New("value is not a string")
-		}
-		if result.KnownERC721Properties[k] {
-			continue
-		}
-		val, err := base64.StdEncoding.DecodeString(str)
-		if err != nil {
-			return nil, err
-		}
-		resp[k] = val
-	}
-	return resp, nil
-}
-
-func (c *Client) GetERC721Transfers(address common.Address, start, stop *uint64, limit, page *int) (*result.ERC721Transfers, error) {
-	params, err := packTransfersParams(address, start, stop, limit, page)
-	if err != nil {
-		return nil, err
-	}
-	resp := new(result.ERC721Transfers)
-	if err := c.performRequest("getERC721transfers", *params, resp); err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
-
-func packTransfersParams(address common.Address, start, stop *uint64, limit, page *int) (*request.RawParams, error) {
-	params := request.NewRawParams(address.String())
-	if start != nil {
-		params.Values = append(params.Values, *start)
-		if stop != nil {
-			params.Values = append(params.Values, *stop)
-			if limit != nil {
-				params.Values = append(params.Values, *limit)
-				if page != nil {
-					params.Values = append(params.Values, *page)
-				}
-			} else if page != nil {
-				return nil, errors.New("bad parameters")
-			}
-		} else if limit != nil || page != nil {
-			return nil, errors.New("bad parameters")
-		}
-	} else if stop != nil || limit != nil || page != nil {
-		return nil, errors.New("bad parameters")
-	}
-	return &params, nil
-}
-
-func (c *Client) GetERC20Transfers(address common.Address, start, stop *uint64, limit, page *int) (*result.ERC20Transfers, error) {
-	params, err := packTransfersParams(address, start, stop, limit, page)
-	if err != nil {
-		return nil, err
-	}
-	resp := new(result.ERC20Transfers)
-	if err := c.performRequest("getERC20transfers", *params, resp); err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
-
 // GetPeers returns the list of nodes that the node is currently connected/disconnected from.
 func (c *Client) GetPeers() (*result.GetPeers, error) {
 	var (
@@ -417,7 +317,8 @@ func (c *Client) GetRawTransaction(hash common.Hash) (*transaction.Transaction, 
 	if err = c.performRequest("getrawtransaction", params, &resp); err != nil {
 		return nil, err
 	}
-	tx, err := transaction.NewTransactionFromBytes(resp)
+	tx := new(transaction.Transaction)
+	err = io.FromByteArray(tx, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -435,6 +336,17 @@ func (c *Client) GetRawTransactionVerbose(hash common.Hash) (*result.Transaction
 	)
 	if err = c.performRequest("getrawtransaction", params, resp); err != nil {
 		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *Client) GetProof(stateroot common.Hash, historicalContractHash common.Address, historicalKey []byte) (*result.ProofWithKey, error) {
+	var (
+		params = request.NewRawParams(stateroot.String(), historicalContractHash.String(), hex.EncodeToString(historicalKey))
+		resp   = new(result.ProofWithKey)
+	)
+	if err := c.performRequest("getproof", params, resp); err != nil {
+		return resp, err
 	}
 	return resp, nil
 }
@@ -491,11 +403,16 @@ func (c *Client) GetStateRootByBlockHash(hash common.Hash) (*state.MPTRoot, erro
 }
 
 func (c *Client) getStateRoot(params request.RawParams) (*state.MPTRoot, error) {
-	var resp = new(state.MPTRoot)
-	if err := c.performRequest("getstateroot", params, resp); err != nil {
+	var resp = []byte{}
+	if err := c.performRequest("getstateroot", params, &resp); err != nil {
 		return nil, err
 	}
-	return resp, nil
+	sr := new(state.MPTRoot)
+	err := io.FromByteArray(sr, resp)
+	if err != nil {
+		return nil, err
+	}
+	return sr, nil
 }
 
 // GetStateHeight returns current validated and local node state height.

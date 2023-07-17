@@ -21,10 +21,6 @@ type Management struct {
 	cs *Contracts
 }
 
-func createContractKey(h common.Address) []byte {
-	return makeAddressKey(prefixContract, h)
-}
-
 func NewManagement(cs *Contracts) *Management {
 	m := &Management{
 		NativeContract: state.NativeContract{
@@ -46,22 +42,19 @@ func NewManagement(cs *Contracts) *Management {
 	return m
 }
 
-func (m *Management) ContractCall_initialize(ic InteropContext) error {
-	if ic.PersistingBlock() == nil || ic.PersistingBlock().Index != 0 {
-		return ErrInitialize
-	}
+func (m *Management) Initialize(d *dao.Simple) error {
 	for _, native := range m.cs.Contracts {
 		item, err := io.ToByteArray(&native.Contract)
 		if err != nil {
 			return err
 		}
-		ic.Dao().PutStorageItem(m.Address, createContractKey(native.Address), item)
+		d.PutStorageItem(m.Address, MakeContractKey(native.Address), item)
 	}
 	return nil
 }
 
 func (m *Management) GetContract(s *dao.Simple, addr common.Address) *state.Contract {
-	item := s.GetStorageItem(m.Address, createContractKey(addr))
+	item := s.GetStorageItem(m.Address, MakeContractKey(addr))
 	if item == nil {
 		return nil
 	}
@@ -110,7 +103,7 @@ func (m *Management) SetCode(s *dao.Simple, addr common.Address, code []byte) {
 	if err != nil {
 		panic(err)
 	}
-	s.PutStorageItem(m.Address, createContractKey(addr), bytes)
+	s.PutStorageItem(m.Address, MakeContractKey(addr), bytes)
 }
 
 func (m *Management) Destroy(s *dao.Simple, addr common.Address) bool {
@@ -118,7 +111,7 @@ func (m *Management) Destroy(s *dao.Simple, addr common.Address) bool {
 	if contract == nil {
 		return false
 	}
-	k := createContractKey(addr)
+	k := MakeContractKey(addr)
 	s.DeleteStorageItem(addr, k)
 	return true
 }

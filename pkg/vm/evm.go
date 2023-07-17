@@ -220,7 +220,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	if isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else if isNative {
-		ret, gas, err = RunNativeContract(n, caller.Address(), input, gas)
+		ret, gas, err = RunNativeContract(n, caller.Address(), input, value, gas)
 	} else {
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
@@ -285,7 +285,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else if n, isNative := evm.native(addr); isNative {
-		ret, gas, err = RunNativeContract(n, caller.Address(), input, gas)
+		ret, gas, err = RunNativeContract(n, caller.Address(), input, value, gas)
 	} else {
 		addrCopy := addr
 		// Initialise a new contract and set the code that is to be used by the EVM.
@@ -328,7 +328,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else if n, isNative := evm.native(addr); isNative {
-		ret, gas, err = RunNativeContract(n, caller.Address(), input, gas)
+		ret, gas, err = RunNativeContract(n, caller.Address(), input, nil, gas)
 	} else {
 		addrCopy := addr
 		// Initialise a new contract and make initialise the delegate values
@@ -379,7 +379,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	if p, isPrecompile := evm.precompile(addr); isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
 	} else if n, isNative := evm.native(addr); isNative {
-		ret, gas, err = RunNativeContract(n, caller.Address(), input, gas)
+		ret, gas, err = RunNativeContract(n, caller.Address(), input, nil, gas)
 	} else {
 		// At this point, we use a copy of address. If we don't, the go compiler will
 		// leak the 'contract' to the outer scope, and make allocation for 'contract'

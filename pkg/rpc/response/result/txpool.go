@@ -48,12 +48,10 @@ func NewTxPool(txes []*transaction.Transaction) TxPool {
 			TransactionIndex: nil,
 			Value:            hexutil.Big(*tx.Value()),
 		}
-		if tx.Type == transaction.EthTxType {
-			r, s, v := tx.EthTx.RawSignatureValues()
-			pooltx.R = hexutil.Big(*r)
-			pooltx.S = hexutil.Big(*s)
-			pooltx.V = hexutil.Big(*v)
-		}
+		r, s, v := tx.RawSignatureValues()
+		pooltx.R = hexutil.Big(*r)
+		pooltx.S = hexutil.Big(*s)
+		pooltx.V = hexutil.Big(*v)
 		noncetable, ok := tp.Pending[from]
 		if !ok {
 			noncetable = make(map[uint64]poolTx)

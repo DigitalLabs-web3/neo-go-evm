@@ -257,8 +257,8 @@ func (dao *Simple) GetStorageItem(address common.Address, key []byte) state.Stor
 
 // PutStorageItem puts given StorageItem for given id with given
 // key into the given store.
-func (dao *Simple) PutStorageItem(hash common.Address, key []byte, si state.StorageItem) {
-	stKey := dao.makeStorageItemKey(hash, key)
+func (dao *Simple) PutStorageItem(address common.Address, key []byte, si state.StorageItem) {
+	stKey := dao.makeStorageItemKey(address, key)
 	dao.Store.Put(stKey, si)
 }
 

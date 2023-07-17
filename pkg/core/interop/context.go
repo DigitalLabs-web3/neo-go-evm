@@ -35,6 +35,7 @@ type Context struct {
 	bctx   vm.BlockContext
 	sdb    *statedb.StateDB
 	caller common.Address
+	value  big.Int
 }
 
 func NewContext(block *block.Block, tx *transaction.Transaction, sdb *statedb.StateDB, chain Chain, tracer vm.EVMLogger) (*Context, error) {
@@ -44,6 +45,7 @@ func NewContext(block *block.Block, tx *transaction.Transaction, sdb *statedb.St
 		Tx:     tx,
 		sdb:    sdb,
 		caller: tx.From(),
+		value:  *tx.Value(),
 	}
 	ctx.bctx = newEVMBlockContext(block, chain, chain.GetConfig())
 	txContext := vm.TxContext{
@@ -114,6 +116,10 @@ func newEVMBlockContext(block *block.Block,
 
 func (c Context) Log(log *types.Log) {
 	c.sdb.AddLog(log)
+}
+
+func (c Context) Value() big.Int {
+	return c.value
 }
 
 func (c Context) Sender() common.Address {

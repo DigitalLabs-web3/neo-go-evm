@@ -1,7 +1,7 @@
 ProtocolConfiguration:
   ChainID: 253
   MaxTraceableBlocks: 200000
-  InitialGASSupply: 100000000
+  InitialGASPerValidator: 100
   KeepOnlyLatestState: false
   MaxBlockSize: 262144
   MaxBlockGas: 250000000

@@ -59,19 +59,9 @@ func callNative(ctx *cli.Context, name string, method string, params ...interfac
 }
 
 func makeCommitteeTx(ctx *cli.Context, to common.Address, data []byte) error {
-	wall, err := wallet.ReadWallet(ctx.String("wallet"))
+	facc, err := wallet.DecideFrom(ctx)
 	if err != nil {
-		return cli.NewExitError(err, 1)
+		return err
 	}
-	gctx, cancel := options.GetTimeoutContext(ctx)
-	defer cancel()
-	c, err := options.GetRPCClient(gctx, ctx)
-	if err != nil {
-		return cli.NewExitError(err, 1)
-	}
-	committeeAddr, err := c.GetConsensusAddress()
-	if err != nil {
-		return cli.NewExitError(fmt.Errorf("failed get committee address: %w", err), 1)
-	}
-	return wallet.MakeNeoTx(ctx, wall, committeeAddr, to, big.NewInt(0), data)
+	return wallet.MakeEthTx(ctx, facc, &to, big.NewInt(0), data)
 }

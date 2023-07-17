@@ -40,34 +40,17 @@ func NewAccount() (*Account, error) {
 	return NewAccountFromPrivateKey(priv), nil
 }
 
-func (a *Account) IsMultiSig() bool {
-	return len(a.Script) > 0 && a.Script[0] > 0
-}
-
 // SignTx signs transaction t and updates it's Witnesses.
 func (a *Account) SignTx(chainId uint64, t *transaction.Transaction) error {
 	if a.privateKey == nil {
 		return errors.New("account is not unlocked")
 	}
-	switch t.Type {
-	case transaction.NeoTxType:
-		sig := a.privateKey.SignHashable(chainId, t)
-		witness := transaction.Witness{
-			VerificationScript: (*a.privateKey.PublicKey()).CreateVerificationScript(),
-			InvocationScript:   sig,
-		}
-		t.WithWitness(witness)
-		return nil
-	case transaction.EthTxType:
-		sig, err := crypto.Sign(t.SignHash(chainId).Bytes(), &a.privateKey.PrivateKey)
-		if err != nil {
-			return err
-		}
-		t.WithSignature(chainId, sig)
-		return nil
-	default:
-		return transaction.ErrUnsupportType
+	sig, err := crypto.Sign(t.SignHash(chainId).Bytes(), &a.privateKey.PrivateKey)
+	if err != nil {
+		return err
 	}
+	t.WithSignature(chainId, sig)
+	return nil
 }
 
 // Decrypt decrypts the EncryptedWIF with the given passphrase returning error
@@ -120,7 +103,7 @@ func NewAccountFromPrivateKey(p *keys.PrivateKey) *Account {
 	pubKey := p.PublicKey()
 
 	a := &Account{
-		Script:     append([]byte{0}, pubKey.Bytes()...),
+		Script:     pubKey.Bytes(),
 		privateKey: p,
 		Address:    pubKey.Address(),
 	}

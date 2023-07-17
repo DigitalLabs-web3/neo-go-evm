@@ -3,130 +3,76 @@ package transaction
 import (
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"testing"
 
-	nio "github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSize(t *testing.T) {
-	tx := &NeoTx{
-		Nonce: 0,
-		Data:  []byte{},
-	}
-	d, _ := nio.ToByteArray(tx)
-	assert.Equal(t, 42, len(d))
-	assert.Equal(t, 42, tx.Size())
-}
-
-func TestEthTxDecode(t *testing.T) {
+func TestEncodeRLP(t *testing.T) {
 	s := "f868800182d6d8946cb3e9d55dc87d4586bd2e558a1ee46a94e300b4880de0b6b3a764000080818da0ccd99c35f99317a094d99a8b677acb495dda3402e8aa45f91c524dea9aeb4c7ba02e5fffeedca5c7e4bbc7f36f16e94d1f85daf0ed0cd036187aa9c564708ce220"
-	ds, err := hex.DecodeString(s)
+	b, err := hex.DecodeString(s)
 	assert.NoError(t, err)
-	tx := &types.LegacyTx{}
-	err = rlp.DecodeBytes(ds, tx)
+	etx := new(types.Transaction)
+	etx.UnmarshalBinary(b)
+	tx, err := NewTx(etx)
 	assert.NoError(t, err)
-	d, err := json.Marshal(tx)
+	b, err = tx.MarshalBinary()
 	assert.NoError(t, err)
-	t.Log(string(d))
-	txx := &types.LegacyTx{}
-	bss := append(ds, 1)
-	reader := nio.NewBinReaderFromBuf(bss)
-	err = rlp.Decode(reader, txx)
-	assert.NoError(t, err)
-	b := reader.ReadB()
-	assert.Equal(t, byte(1), b)
+	assert.Equal(t, s, hex.EncodeToString(b))
 }
 
-func TestHexutil(t *testing.T) {
-	hex := "0xd6d8"
-	n, err := hexutil.DecodeUint64(hex)
+func TestDynamicTx(t *testing.T) {
+	s := "02f87504808502540be4008502540be40083018f9c94ef8e8e9e00b9ef71519728923a148632f9cad3d3880de0b6b3a764000080c001a0f2483ce9a2b374064c74f93f08fa7f119ef08c82c4c64f251637d65e91d864f2a051f6e8c4b5d122b4467c925c2ba5e8f4f6ffed1f57b349c2ba2689ee391c7eec"
+	b, err := hex.DecodeString(s)
 	assert.NoError(t, err)
-	t.Log(n)
-}
-
-func TestNetFee(t *testing.T) {
-	s := "f868800182d6d8946cb3e9d55dc87d4586bd2e558a1ee46a94e300b4880de0b6b3a764000080818da0ccd99c35f99317a094d99a8b677acb495dda3402e8aa45f91c524dea9aeb4c7ba02e5fffeedca5c7e4bbc7f36f16e94d1f85daf0ed0cd036187aa9c564708ce220"
-	d, err := hex.DecodeString(s)
+	tx := &types.Transaction{}
+	err = tx.UnmarshalBinary(b)
 	assert.NoError(t, err)
-	ltx := &types.LegacyTx{}
-	err = rlp.DecodeBytes(d, ltx)
+	assert.Equal(t, types.DynamicFeeTxType, int(tx.Type()))
+	etx, err := NewTx(tx)
+	t.Log(etx.Hash())
 	assert.NoError(t, err)
-	ethtx, err := NewEthTx(types.NewTx(ltx))
-	assert.NoError(t, err)
-	tx := NewTx(ethtx)
-	actual := uint64(tx.Size()) * 1
-	cal := CalculateNetworkFee(tx, 1)
-	siglen := RlpSize(ltx.R) + RlpSize(ltx.S) + RlpSize(ltx.V)
-	t.Log(siglen)
-	t.Log(RlpSize(ltx))
-	assert.NoError(t, err)
-	t.Logf("%d %d\n", actual, cal)
-	ltx.R = nil
-	ltx.S = nil
-	ltx.V = nil
-	t.Log(RlpSize(ltx))
-}
-
-func TestEncodeLegacy(t *testing.T) {
-	tx := NewTx(&EthTx{
-		Transaction: *types.NewTx(&types.LegacyTx{}),
-	})
-	b, err := nio.ToByteArray(tx)
-	assert.NoError(t, err)
-	txx := &Transaction{}
-	err = nio.FromByteArray(txx, b)
-	assert.Error(t, err)
-}
-
-func TestCancel(t *testing.T) {
-	hex1 := `f86d80843b9aca00830186a0946cb3e9d55dc87d4586bd2e558a1ee46a94e300b4880de0b6b3a764000080818ea02ec25d5b4ef673d4fc95e910c8b6861db9d5136bf65c31b372cc95c3943eb309a0146e92873ad2e74150e830fa4c36ace7d11f1a27897a886b02633a1af0572b71`
-	hex2 := `f865808477359400830186a094d751051783f45346be80d5fb2f7483c284d8377f8080818ea0e797d15f92c19d5f41e43c386e45dc54fa0156758efe5c158b2e67c818e41351a00a1c02f1eac66cbbdc81c1be0c8ee82a8b0434796c92ae15209ddaf6771dce92`
-	t1 := &types.LegacyTx{}
-	b1, err := hex.DecodeString(hex1)
-	assert.NoError(t, err)
-	err = rlp.DecodeBytes(b1, t1)
-	assert.NoError(t, err)
-	t2 := &types.LegacyTx{}
-	b2, err := hex.DecodeString(hex2)
-	assert.NoError(t, err)
-	err = rlp.DecodeBytes(b2, t2)
-	assert.NoError(t, err)
-	assert.Equal(t, t1.Nonce, t2.Nonce)
-	etx1, err := NewEthTx(types.NewTx(t1))
-	assert.NoError(t, err)
-	b1, err = json.Marshal(etx1)
-	assert.NoError(t, err)
-	fmt.Println(string(b1))
-	etx2, err := NewEthTx(types.NewTx(t2))
-	assert.NoError(t, err)
-	b2, err = json.Marshal(etx2)
-	assert.NoError(t, err)
-	fmt.Println(string(b2))
-}
-
-func TestJson(t *testing.T) {
-	ltx := &types.LegacyTx{
-		Nonce: 1,
-		Data:  []byte{1},
-		To:    &common.Address{},
-	}
-	tx := types.NewTx(ltx)
-	etx := &EthTx{
-		Transaction: *tx,
-	}
-	txx := NewTx(etx)
-	b, err := json.Marshal(txx)
+	b, err = json.Marshal(etx)
 	assert.NoError(t, err)
 	t.Log(string(b))
-	txxx := new(Transaction)
-	err = json.Unmarshal(b, txxx)
+}
+
+func TestMetaMask(t *testing.T) {
+	s := "02f878832d5311308502540be4008502540be40083018f9c9456611d855eddfc391c35893e0d4f5dd787dfc01b88016345785d8a000080c080a00962e3ab0ae9dd7a21693c641e8e603a0f02f690c643f109b4430e43a96a547fa019da5ae39136d7af2c356edef2afbdac75cce39c86b71adb81f06267158e06de"
+	b, err := hex.DecodeString(s)
 	assert.NoError(t, err)
-	assert.Equal(t, EthTxType, txxx.Type)
-	assert.Equal(t, types.LegacyTxType, int(txxx.EthTx.Type()))
+	etx := &types.Transaction{}
+	err = etx.UnmarshalBinary(b)
+	assert.NoError(t, err)
+	h := etx.Hash()
+	assert.Equal(t, types.DynamicFeeTxType, int(etx.Type()))
+	tx, err := NewTx(etx)
+	assert.NoError(t, err)
+	assert.Equal(t, h, tx.Hash())
+	b, err = io.ToByteArray(tx)
+	assert.NoError(t, err)
+	txx := new(Transaction)
+	err = io.FromByteArray(txx, b)
+	assert.NoError(t, err)
+	assert.Equal(t, h, txx.Hash())
+}
+
+//02f878832d5311308502540be4008502540be40083018f9c9456611d855eddfc391c35893e0d4f5dd787dfc01b88016345785d8a000080c080a00962e3ab0ae9dd7a21693c641e8e603a0f02f690c643f109b4430e43a96a547fa019da5ae39136d7af2c356edef2afbdac75cce39c86b71adb81f06267158e06de
+//b87b 02f878832d5311308502540be4008502540be40083018f9c9456611d855eddfc391c35893e0d4f5dd787dfc01b88016345785d8a000080c080a00962e3ab0ae9dd7a21693c641e8e603a0f02f690c643f109b4430e43a96a547fa019da5ae39136d7af2c356edef2afbdac75cce39c86b71adb81f06267158e06de
+
+func TestLegacyTx(t *testing.T) {
+	s := "f86e808502540be400809455decb32ef6f3a76cb9b56f4c8c38ad572b3d3968a152d02c7e14af68000008082021ea0e042c68ea701552929e972f52205b960705704abb6a57a893b41d44935c6abf2a060b08ba9ee2c0089c699c6684bd996f214860fc898574c7be5078a76a57226f0"
+	b, err := hex.DecodeString(s)
+	assert.NoError(t, err)
+	tx := &types.Transaction{}
+	err = tx.UnmarshalBinary(b)
+	assert.NoError(t, err)
+	assert.Equal(t, types.LegacyTxType, int(tx.Type()))
+	etx, err := NewTx(tx)
+	assert.NoError(t, err)
+	b, err = json.Marshal(etx)
+	assert.NoError(t, err)
+	t.Log(string(b))
 }

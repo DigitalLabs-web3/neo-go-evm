@@ -1,8 +1,6 @@
 package state
 
 import (
-	"errors"
-
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
@@ -14,7 +12,7 @@ type MPTRoot struct {
 	Version byte                `json:"version"`
 	Index   uint32              `json:"index"`
 	Root    common.Hash         `json:"roothash"`
-	Witness transaction.Witness `json:"witnesses"`
+	Witness transaction.Witness `json:"witness"`
 }
 
 // Hash returns hash of s.
@@ -41,17 +39,11 @@ func (s *MPTRoot) EncodeBinaryUnsigned(w *io.BinWriter) {
 // DecodeBinary implements io.Serializable.
 func (s *MPTRoot) DecodeBinary(r *io.BinReader) {
 	s.DecodeBinaryUnsigned(r)
-	witnessCount := r.ReadVarUint()
-	if r.Err == nil && witnessCount != 1 {
-		r.Err = errors.New("wrong witness count")
-		return
-	}
 	s.Witness.DecodeBinary(r)
 }
 
 // EncodeBinary implements io.Serializable.
 func (s *MPTRoot) EncodeBinary(w *io.BinWriter) {
 	s.EncodeBinaryUnsigned(w)
-	w.WriteVarUint(1)
 	s.Witness.EncodeBinary(w)
 }

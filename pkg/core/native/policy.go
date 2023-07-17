@@ -78,19 +78,14 @@ func (p *Policy) PostPersist(d *dao.Simple, _ *block.Block) error {
 	return nil
 }
 
-func (p *Policy) ContractCall_initialize(ic InteropContext) error {
-	if ic.PersistingBlock() == nil || ic.PersistingBlock().Index != 0 {
-		return ErrInitialize
-	}
+func (p *Policy) Initialize(d *dao.Simple) error {
 	item := make([]byte, 8)
 
 	binary.BigEndian.PutUint64(item, DefaultGasPrice)
-	ic.Dao().PutStorageItem(p.Address, []byte{PrefixGasPrice}, item)
-	log(ic, p.Address, item, p.Abi.Events["setGasPrice"].ID)
+	d.PutStorageItem(p.Address, []byte{PrefixGasPrice}, item)
 
 	binary.BigEndian.PutUint64(item, DefaultFeePerByte)
-	ic.Dao().PutStorageItem(p.Address, []byte{PrefixFeePerByte}, item)
-	log(ic, p.Address, item, p.Abi.Events["setFeePerByte"].ID)
+	d.PutStorageItem(p.Address, []byte{PrefixFeePerByte}, item)
 
 	return nil
 }

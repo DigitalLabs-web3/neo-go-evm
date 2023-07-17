@@ -28,9 +28,9 @@ func TestSetGasPrice(t *testing.T) {
 		D: dao,
 		L: make([]*types.Log, 1),
 	}
-	err := des.ContractCall_initialize(ic)
+	err := des.Initialize(dao)
 	assert.NoError(t, err)
-	err = p.ContractCall_initialize(ic)
+	err = p.Initialize(dao)
 	assert.NoError(t, err)
 	ic.S, _ = des.GetConsensusAddress(dao, 1)
 	fn, ok := p.Abi.Methods["setGasPrice"]
@@ -63,9 +63,9 @@ func TestBlockAccount(t *testing.T) {
 		D: dao,
 		L: make([]*types.Log, 1),
 	}
-	err := des.ContractCall_initialize(ic)
+	err := des.Initialize(dao)
 	assert.NoError(t, err)
-	err = p.ContractCall_initialize(ic)
+	err = p.Initialize(dao)
 	assert.NoError(t, err)
 	ic.S, _ = des.GetConsensusAddress(dao, 1)
 	fn, ok := p.Abi.Methods["blockAccount"]

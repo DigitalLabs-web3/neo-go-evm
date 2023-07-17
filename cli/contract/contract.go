@@ -9,12 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DigitalLabs-web3/neo-go-evm/cli/flags"
 	"github.com/DigitalLabs-web3/neo-go-evm/cli/input"
 	"github.com/DigitalLabs-web3/neo-go-evm/cli/options"
 	"github.com/DigitalLabs-web3/neo-go-evm/cli/wallet"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/rpc/response/result"
-	corew "github.com/DigitalLabs-web3/neo-go-evm/pkg/wallet"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -84,7 +82,7 @@ func call(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	facc, err := handleWalletAndFrom(ctx)
+	facc, err := wallet.DecideFrom(ctx)
 	if err != nil {
 		return err
 	}
@@ -168,7 +166,7 @@ func deploy(ctx *cli.Context) error {
 		}
 		data = append(data, arg...)
 	}
-	facc, err := handleWalletAndFrom(ctx)
+	facc, err := wallet.DecideFrom(ctx)
 	if err != nil {
 		return err
 	}
@@ -202,46 +200,4 @@ func parseParam(pstr string) (interface{}, error) {
 		return big.NewInt(0).SetBytes(b), nil
 	}
 	return nil, errors.New("can't parse parameter")
-}
-
-func handleWalletAndFrom(ctx *cli.Context) (*corew.Account, error) {
-	wall, err := wallet.ReadWallet(ctx.String("wallet"))
-	if err != nil {
-		return nil, cli.NewExitError(err, 1)
-	}
-	var facc *corew.Account
-	fromFlag := ctx.Generic("from").(*flags.Address)
-	if fromFlag.IsSet {
-		from := fromFlag.Address()
-		if from == (common.Address{}) {
-			return nil, cli.NewExitError(fmt.Errorf("invalid from address"), 1)
-		}
-		for _, acc := range wall.Accounts {
-			if acc.Address == from && !acc.IsMultiSig() {
-				facc = acc
-			}
-		}
-	} else {
-		if len(wall.Accounts) == 0 {
-			return nil, cli.NewExitError(fmt.Errorf("could not find any account in wallet"), 1)
-		}
-		facc = wall.Accounts[0]
-		for _, acc := range wall.Accounts {
-			if acc.Default {
-				facc = acc
-			}
-		}
-	}
-	if facc == nil {
-		return nil, cli.NewExitError("account not found", 1)
-	}
-	pass, err := input.ReadPassword(fmt.Sprintf("Enter %s password > ", facc.Address))
-	if err != nil {
-		return nil, cli.NewExitError(fmt.Errorf("error reading password: %w", err), 1)
-	}
-	err = facc.Decrypt(pass, wall.Scrypt)
-	if err != nil {
-		return nil, cli.NewExitError(fmt.Errorf("unable to decrypt account: %s", facc.Address), 1)
-	}
-	return facc, nil
 }

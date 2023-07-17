@@ -1,6 +1,8 @@
 package native
 
 import (
+	"math/big"
+
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/block"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/dao"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
@@ -14,4 +16,5 @@ type InteropContext interface {
 	Dao() *dao.Simple
 	Container() *transaction.Transaction
 	PersistingBlock() *block.Block
+	Value() big.Int
 }

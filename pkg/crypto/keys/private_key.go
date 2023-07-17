@@ -12,7 +12,7 @@ import (
 
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/rfc6979"
-	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -22,7 +22,7 @@ type PrivateKey struct {
 
 // NewPrivateKey creates a new random Secp256k1 private key.
 func NewPrivateKey() (*PrivateKey, error) {
-	return newPrivateKeyOnCurve(btcec.S256())
+	return newPrivateKeyOnCurve(secp256k1.S256())
 }
 
 // newPrivateKeyOnCurve creates a new random private key using curve c.
@@ -51,7 +51,7 @@ func NewPrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 		)
 	}
 	var (
-		c = btcec.S256()
+		c = secp256k1.S256()
 		d = new(big.Int).SetBytes(b)
 	)
 

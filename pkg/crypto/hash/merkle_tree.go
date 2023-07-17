@@ -1,7 +1,9 @@
 package hash
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -158,6 +160,7 @@ func CalcProofRoot(target common.Hash, hashes []common.Hash, path uint32) common
 	scratch := make([]byte, 64)
 	parent := target
 	for i := 0; i < len(hashes); i++ {
+		fmt.Printf("hash: %s\n", base64.StdEncoding.EncodeToString(hashes[i][:]))
 		if (path >> i & 1) == 1 {
 			copy(scratch, parent[:])
 			copy(scratch[32:], hashes[i][:])
@@ -166,6 +169,7 @@ func CalcProofRoot(target common.Hash, hashes []common.Hash, path uint32) common
 			copy(scratch[32:], parent[:])
 		}
 		parent = DoubleSha256(scratch)
+		fmt.Printf("parent %s\n", base64.StdEncoding.EncodeToString(scratch))
 	}
 	return parent
 }

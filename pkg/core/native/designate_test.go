@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
 	"testing"
 
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config"
@@ -39,6 +40,10 @@ func (ic interopContext) Log(l *types.Log) {
 
 func (ic interopContext) Sender() common.Address {
 	return ic.S
+}
+
+func (ic interopContext) Value() big.Int {
+	return *big.NewInt(0)
 }
 
 func (ic interopContext) Natives() *Contracts {
@@ -77,7 +82,7 @@ func TestCommitteeRole(t *testing.T) {
 	ic := interopContext{
 		D: dao,
 	}
-	err = des.ContractCall_initialize(ic)
+	err = des.Initialize(dao)
 	assert.NoError(t, err)
 	ks, _, err := des.GetDesignatedByRole(dao, noderoles.Validator, 1)
 	assert.NoError(t, err)
@@ -126,7 +131,7 @@ func TestDesignateContractCall(t *testing.T) {
 		D: dao,
 		L: make([]*types.Log, 1),
 	}
-	err := des.ContractCall_initialize(ic)
+	err := des.Initialize(dao)
 	assert.NoError(t, err)
 	ic.S, _ = des.GetConsensusAddress(dao, 1)
 	fn, ok := des.Abi.Methods["designateAsRole"]

@@ -50,7 +50,7 @@ func NewContracts(cfg config.ProtocolConfiguration) *Contracts {
 	cs := &Contracts{
 		Contracts: make([]state.NativeContract, 0, 4),
 	}
-	cs.GAS = NewGAS(cs, cfg.InitialGASSupply)
+	cs.GAS = NewGAS(cs, cfg.InitialGASPerValidator)
 	cs.Contracts = append(cs.Contracts, cs.GAS.NativeContract)
 	cs.Ledger = NewLedger()
 	cs.Contracts = append(cs.Contracts, cs.Ledger.NativeContract)
@@ -76,6 +76,24 @@ func (cs *Contracts) ByName(name string) *state.NativeContract {
 }
 
 func (cs *Contracts) OnPersist(d *dao.Simple, block *block.Block) error {
+	if block.Index == 0 {
+		err := cs.Designate.Initialize(d)
+		if err != nil {
+			return err
+		}
+		err = cs.Policy.Initialize(d)
+		if err != nil {
+			return err
+		}
+		err = cs.GAS.Initialize(d)
+		if err != nil {
+			return err
+		}
+		err = cs.Management.Initialize(d)
+		if err != nil {
+			return err
+		}
+	}
 	return cs.GAS.OnPersist(d, block)
 }
 

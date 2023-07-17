@@ -22,7 +22,8 @@ func TestSign1(t *testing.T) {
 	ltx := &types.LegacyTx{}
 	err = rlp.DecodeBytes(d, ltx)
 	assert.NoError(t, err)
-	tx := transaction.NewTx(ltx)
+	tx, err := transaction.NewTx(types.NewTx(ltx))
+	assert.NoError(t, err)
 	err = tx.Verify(53)
 	assert.NoError(t, err)
 	t.Log(tx.From())
@@ -40,7 +41,8 @@ func TestSign1(t *testing.T) {
 		To:       ltx.To,
 		Data:     ltx.Data,
 	}
-	tx = transaction.NewTx(ltx0)
+	tx, err = transaction.NewTx(types.NewTx(ltx0))
+	assert.NoError(t, err)
 	err = acc.SignTx(53, tx)
 	assert.NoError(t, err)
 	err = tx.Verify(53)
@@ -57,7 +59,8 @@ func TestSign2(t *testing.T) {
 		Value:    big.NewInt(1),
 		Data:     []byte{},
 	}
-	tx := transaction.NewTx(ltx)
+	tx, err := transaction.NewTx(types.NewTx(ltx))
+	assert.NoError(t, err)
 	hash := tx.Hash()
 	pkbs, err := hex.DecodeString("655119e8830ed7816c91a6ce8138560854687e2c78074d065becc66fe5a65f6b")
 	assert.NoError(t, err)

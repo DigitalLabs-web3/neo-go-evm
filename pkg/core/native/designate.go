@@ -115,12 +115,9 @@ func addressFromNodes(r noderoles.Role, nodes keys.PublicKeys) (common.Address, 
 	return hash.Hash160(script), nil
 }
 
-func (d *Designate) ContractCall_initialize(ic InteropContext) error {
-	if ic.PersistingBlock() == nil || ic.PersistingBlock().Index != 0 {
-		return ErrInitialize
-	}
-	ic.Dao().PutStorageItem(d.Address, createRoleKey(noderoles.Validator, 0), d.StandbyValidators.Bytes())
-	log(ic, d.Address, d.StandbyValidators.Bytes(), d.Abi.Events["initialize"].ID, common.BytesToHash([]byte{byte(noderoles.Validator)}))
+func (d *Designate) Initialize(s *dao.Simple) error {
+	s.PutStorageItem(d.Address, createRoleKey(noderoles.Validator, 0), d.StandbyValidators.Bytes())
+	s.PutStorageItem(d.Address, createRoleKey(noderoles.StateValidator, 0), d.StandbyValidators.Bytes())
 	return nil
 }
 

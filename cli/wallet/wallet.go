@@ -14,7 +14,6 @@ import (
 	"github.com/DigitalLabs-web3/neo-go-evm/cli/input"
 	"github.com/DigitalLabs-web3/neo-go-evm/cli/options"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
-	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/rpc/response/result"
@@ -193,16 +192,6 @@ func NewCommands() []cli.Command {
 				Usage:       "work with native gas",
 				Subcommands: newNativeTokenCommands(),
 			},
-			{
-				Name:      "sign",
-				Usage:     "sign sign_context",
-				UsageText: "sign --wallet <path> --rpc-endpoint <node> [--timeout <time>] --context <contextJson>",
-				Action:    sign,
-				Flags: append(listFlags, cli.StringFlag{
-					Name:  "context, c",
-					Usage: "sign a context",
-				}),
-			},
 		},
 	}}
 }
@@ -240,9 +229,6 @@ func changePassword(ctx *cli.Context) error {
 		acc := wall.GetAccount(addrFlag.Address())
 		if acc == nil {
 			return cli.NewExitError("account is missing", 1)
-		}
-		if acc.IsMultiSig() {
-			return cli.NewExitError("can't change passord of a multi-sig account", 1)
 		}
 	}
 
@@ -316,9 +302,6 @@ loop:
 	for _, a := range wall.Accounts {
 		if a.Address != addr {
 			continue
-		}
-		if a.IsMultiSig() {
-			return cli.NewExitError("can't export multi-sig account", 1)
 		}
 		for i := range wifs {
 			if a.EncryptedWIF == wifs[i] {
@@ -483,15 +466,10 @@ func dumpKeys(ctx *cli.Context) error {
 		if hasPrinted {
 			fmt.Fprintln(ctx.App.Writer)
 		}
-		if acc.IsMultiSig() {
-			fmt.Println("multiple signature contract:")
-			fmt.Fprintf(ctx.App.Writer, "address: %s \n", acc.Address)
-			fmt.Fprintf(ctx.App.Writer, "script: %s \n", hex.EncodeToString(acc.Script))
-		} else {
-			fmt.Println("simple signature contract:")
-			fmt.Fprintf(ctx.App.Writer, "address: %s \n", acc.Address)
-			fmt.Fprintf(ctx.App.Writer, "public key: %s \n", hex.EncodeToString((acc.Script)[1:]))
-		}
+
+		fmt.Println("simple signature contract:")
+		fmt.Fprintf(ctx.App.Writer, "address: %s \n", acc.Address)
+		fmt.Fprintf(ctx.App.Writer, "public key: %s \n", hex.EncodeToString((acc.Script)[1:]))
 		hasPrinted = true
 	}
 	return nil
@@ -599,200 +577,46 @@ func fmtPrintWallet(w io.Writer, wall *wallet.Wallet) {
 	fmt.Fprintln(w, "")
 }
 
-func sign(ctx *cli.Context) error {
+func DecideFrom(ctx *cli.Context) (*wallet.Account, error) {
 	wall, err := ReadWallet(ctx.String("wallet"))
 	if err != nil {
-		return cli.NewExitError(err, 1)
+		return nil, cli.NewExitError(err, 1)
 	}
-	defer wall.Close()
-
-	signContext := new(SignContext)
-	err = json.Unmarshal([]byte(ctx.String("context")), signContext)
-	if err != nil {
-		return cli.NewExitError(fmt.Errorf("sign context invalid: %w", err), 1)
-	}
-
-	err = Sign(wall, signContext)
-	if err != nil {
-		return cli.NewExitError(fmt.Errorf("sign context error: %w", err), 1)
-	}
-	var tx *transaction.Transaction
-	if signContext.IsComplete() {
-		tx, err = signContext.CreateTx()
-		if err != nil {
-			return cli.NewExitError(fmt.Errorf("failed to create tx: %w", err), 1)
+	var facc *wallet.Account
+	fromFlag := ctx.Generic("from").(*flags.Address)
+	var from common.Address
+	if fromFlag.IsSet {
+		from = fromFlag.Address()
+		if from == (common.Address{}) {
+			return nil, cli.NewExitError(fmt.Errorf("invalid from address"), 1)
 		}
-	} else {
-		b, err := json.Marshal(*signContext)
-		if err != nil {
-			return cli.NewExitError(fmt.Errorf("failed marshal sign context json: %w", err), 1)
-		}
-		fmt.Fprintf(ctx.App.Writer, "SignContext: %s\n", string(b))
-		return nil
-	}
-	b, err := tx.Bytes()
-	if err != nil {
-		return cli.NewExitError(fmt.Errorf("failed encode tx: %w", err), 1)
-	}
-	err = input.ConfirmTx()
-	if err != nil {
-		fmt.Fprintln(ctx.App.Writer, hex.EncodeToString(b[1:]))
-		return cli.NewExitError(err, 1)
-	}
-	gctx, cancel := options.GetTimeoutContext(ctx)
-	defer cancel()
-	c, err := options.GetRPCClient(gctx, ctx)
-	hash, err := c.SendRawTransaction(b[1:])
-	if err != nil {
-		return cli.NewExitError(fmt.Errorf("failed relay tx: %w", err), 1)
-	}
-	fmt.Fprintf(ctx.App.Writer, "TxHash: %s\n", hash)
-	return nil
-}
-
-func MakeNeoTx(ctx *cli.Context, wall *wallet.Wallet, from common.Address, to common.Address, value *big.Int, data []byte) error {
-	var err error
-	var pks keys.PublicKeys
-	var script []byte
-	isMulti := false
-	m := 0
-	signers := []*wallet.Account{}
-	for _, acc := range wall.Accounts {
-		if acc.Address == from {
-			isMulti = acc.IsMultiSig()
-			signers = append(signers, acc)
-			break
-		}
-	}
-	gctx, cancel := options.GetTimeoutContext(ctx)
-	defer cancel()
-	c, err := options.GetRPCClient(gctx, ctx)
-	if err != nil {
-		return cli.NewExitError(err, 1)
-	}
-	if len(signers) == 0 {
-		validators, err := c.GetNextValidators()
-		if err != nil {
-			return cli.NewExitError(fmt.Errorf("can't get validators: %w", err), 1)
-		}
-		script, err = validators.CreateDefaultMultiSigRedeemScript()
-		if err != nil {
-			return err
-		}
-		consensus := hash.Hash160(script)
-		if from != consensus {
-			return cli.NewExitError("can't find account to sign", 1)
-		}
-		isMulti = true
-		pks = validators
-		m = keys.GetDefaultHonestNodeCount(pks.Len())
-	}
-	if isMulti {
-		if pks.Len() == 0 {
-			script = signers[0].Script
-			pks, m, err = crypto.ParseMultiVerificationScript(signers[0].Script)
-			if err != nil {
-				return cli.NewExitError(fmt.Errorf("can't parse multi-sig account script: %w", err), 1)
-			}
-			signers = signers[1:]
-		}
-		for _, ac := range wall.Accounts {
-			if ac.IsMultiSig() {
-				continue
-			}
-			pk, err := crypto.ParseVerificationScript(ac.Script)
-			if err != nil {
-				return cli.NewExitError(fmt.Errorf("can't parse account script: %w", err), 1)
-			}
-			if pks.Contains(pk) {
-				signers = append(signers, ac)
-			}
-			if len(signers) >= m {
+		for _, acc := range wall.Accounts {
+			if acc.Address == from {
+				facc = acc
 				break
 			}
 		}
 	} else {
-		script = signers[0].Script
-	}
-	if len(signers) == 0 {
-		return cli.NewExitError("can't find account to sign", 1)
-	}
-	for _, acc := range signers {
-		pass, err := input.ReadPassword(fmt.Sprintf("Enter %s password > ", acc.Address))
-		if err != nil {
-			return cli.NewExitError(fmt.Errorf("error reading password: %w", err), 1)
+		if len(wall.Accounts) == 0 {
+			return nil, cli.NewExitError(fmt.Errorf("could not find any account in wallet"), 1)
 		}
-		err = acc.Decrypt(pass, wall.Scrypt)
-		if err != nil {
-			return cli.NewExitError(fmt.Errorf("unable to decrypt account: %s", acc.Address), 1)
-		}
-	}
-	nonce, err := c.Eth_GetTransactionCount(from)
-	if err != nil {
-		return cli.NewExitError(fmt.Errorf("failed get account nonce: %w", err), 1)
-	}
-	gasPrice, err := c.Eth_GasPrice()
-	if err != nil {
-		return cli.NewExitError(fmt.Errorf("failed get fee per byte: %w", err), 1)
-	}
-	t := &transaction.NeoTx{
-		Nonce:    nonce,
-		GasPrice: gasPrice,
-		Gas:      0,
-		From:     from,
-		To:       &to,
-		Value:    value,
-		Data:     data,
-		Witness: transaction.Witness{
-			VerificationScript: script,
-		},
-	}
-	tx := transaction.NewTx(t)
-	gas, err := c.CalculateGas(t)
-	if err != nil {
-		return cli.NewExitError(fmt.Errorf("failed estimate gas fee: %w", err), 1)
-	}
-	t.Gas = gas
-	chainId, err := c.Eth_ChainId()
-	if err != nil {
-		return cli.NewExitError(fmt.Errorf("failed to get chainId: %w", err), 1)
-	}
-	if !isMulti {
-		signers[0].SignTx(chainId, tx)
-	} else {
-		signContext := SignContext{
-			ChainID:    chainId,
-			Tx:         *t,
-			Parameters: make(map[string][]byte),
-			M:          m,
-		}
-		for _, acc := range signers {
-			signContext.Parameters[hex.EncodeToString(acc.Script[1:])] = acc.PrivateKey().SignHashable(chainId, t)
-		}
-		if signContext.IsComplete() {
-			tx, err = signContext.CreateTx()
-			if err != nil {
-				return cli.NewExitError(fmt.Errorf("failed to create tx: %w", err), 1)
+		facc = wall.Accounts[0]
+		for _, acc := range wall.Accounts {
+			if acc.Default {
+				facc = acc
+				break
 			}
-		} else {
-			b, err := json.Marshal(signContext)
-			if err != nil {
-				return cli.NewExitError(fmt.Errorf("failed marshal sign context json: %w", err), 1)
-			}
-			fmt.Fprintf(ctx.App.Writer, "SignContext: %s\n", string(b))
-			return nil
 		}
 	}
-	b, err := tx.NeoTx.Bytes()
+	pass, err := input.ReadPassword(fmt.Sprintf("Enter %s password > ", facc.Address))
 	if err != nil {
-		return cli.NewExitError(fmt.Errorf("failed encode tx to bytes: %w", err), 1)
+		return nil, cli.NewExitError(fmt.Errorf("error reading password: %w", err), 1)
 	}
-	hash, err := c.SendRawTransaction(b)
+	err = facc.Decrypt(pass, wall.Scrypt)
 	if err != nil {
-		return cli.NewExitError(fmt.Errorf("failed relay tx: %w", err), 1)
+		return nil, cli.NewExitError(fmt.Errorf("unable to decrypt account: %s", facc.Address), 1)
 	}
-	fmt.Fprintf(ctx.App.Writer, "TxHash: %s\n", hash)
-	return nil
+	return facc, nil
 }
 
 func MakeEthTx(ctx *cli.Context, facc *wallet.Account, to *common.Address, value *big.Int, data []byte) error {
@@ -822,7 +646,7 @@ func MakeEthTx(ctx *cli.Context, facc *wallet.Account, to *common.Address, value
 		Value:    value,
 		Data:     data,
 	}
-	tx := &transaction.EthTx{
+	tx := &transaction.Transaction{
 		Transaction: *types.NewTx(ltx),
 	}
 	gas, err := c.Eth_EstimateGas(&result.TransactionObject{
@@ -837,7 +661,7 @@ func MakeEthTx(ctx *cli.Context, facc *wallet.Account, to *common.Address, value
 	}
 	ltx.Gas = gas
 	tx.Transaction = *types.NewTx(ltx)
-	err = facc.SignTx(chainId, transaction.NewTx(tx))
+	err = facc.SignTx(chainId, tx)
 	if err != nil {
 		return cli.NewExitError(fmt.Errorf("can't sign tx: %w", err), 1)
 	}

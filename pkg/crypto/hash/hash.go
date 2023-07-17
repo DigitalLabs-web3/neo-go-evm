@@ -23,7 +23,7 @@ func getSignedData(chainId uint64, hh Hashable) []byte {
 	var b = make([]byte, 8+32)
 	binary.LittleEndian.PutUint64(b, chainId)
 	h := hh.Hash()
-	copy(b[4:], h[:])
+	copy(b[8:], h[:])
 	return b
 }
 

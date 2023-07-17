@@ -13,7 +13,7 @@ import (
 
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/io"
-	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	lru "github.com/hashicorp/golang-lru"
@@ -159,7 +159,7 @@ func NewPublicKeyFromString(s string) (*PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewPublicKeyFromBytes(b, btcec.S256())
+	return NewPublicKeyFromBytes(b, secp256k1.S256())
 }
 
 // keycache is a simple lru cache for P256 keys that avoids Y calculation overhead
@@ -240,7 +240,7 @@ func NewPublicKeyFromASN1(data []byte) (*PublicKey, error) {
 func decodeCompressedY(x *big.Int, ylsb uint, curve elliptic.Curve) (*big.Int, error) {
 	var a *big.Int
 	switch curve.(type) {
-	case *btcec.KoblitzCurve:
+	case *secp256k1.KoblitzCurve:
 		a = big0
 	default:
 		a = big3
@@ -290,7 +290,7 @@ func (p *PublicKey) DecodeBinary(r *io.BinReader) {
 	}
 
 	if p.Curve == nil {
-		p.Curve = btcec.S256()
+		p.Curve = secp256k1.S256()
 	}
 	curve := p.Curve
 	curveParams := p.Params()

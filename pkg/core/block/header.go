@@ -59,18 +59,12 @@ func (b *Header) Hash() common.Hash {
 // DecodeBinary implements Serializable interface.
 func (b *Header) DecodeBinary(br *io.BinReader) {
 	b.decodeHashableFields(br)
-	witnessCount := br.ReadVarUint()
-	if br.Err == nil && witnessCount != 1 {
-		br.Err = errors.New("wrong witness count")
-		return
-	}
 	b.Witness.DecodeBinary(br)
 }
 
 // EncodeBinary implements Serializable interface.
 func (b *Header) EncodeBinary(bw *io.BinWriter) {
 	b.encodeHashableFields(bw)
-	bw.WriteVarUint(1)
 	b.Witness.EncodeBinary(bw)
 }
 

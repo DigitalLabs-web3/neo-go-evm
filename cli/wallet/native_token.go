@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/DigitalLabs-web3/neo-go-evm/cli/flags"
-	"github.com/DigitalLabs-web3/neo-go-evm/cli/input"
 	"github.com/DigitalLabs-web3/neo-go-evm/cli/options"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/wallet"
 	"github.com/ethereum/go-ethereum/common"
@@ -103,10 +102,6 @@ func balance(ctx *cli.Context) error {
 }
 
 func transferNativeToken(ctx *cli.Context) error {
-	wall, err := ReadWallet(ctx.String("wallet"))
-	if err != nil {
-		return cli.NewExitError(err, 1)
-	}
 	toFlag := ctx.Generic("to").(*flags.Address)
 	if !toFlag.IsSet {
 		return cli.NewExitError(fmt.Errorf("missing to address"), 1)
@@ -120,42 +115,9 @@ func transferNativeToken(ctx *cli.Context) error {
 	if !ok {
 		return cli.NewExitError(fmt.Errorf("could not parse amount: %s", samount), 1)
 	}
-	var facc *wallet.Account
-	fromFlag := ctx.Generic("from").(*flags.Address)
-	var from common.Address
-	if fromFlag.IsSet {
-		from = fromFlag.Address()
-		if from == (common.Address{}) {
-			return cli.NewExitError(fmt.Errorf("invalid from address"), 1)
-		}
-		for _, acc := range wall.Accounts {
-			if acc.Address == from {
-				facc = acc
-				break
-			}
-		}
-	} else {
-		if len(wall.Accounts) == 0 {
-			return cli.NewExitError(fmt.Errorf("could not find any account in wallet"), 1)
-		}
-		facc = wall.Accounts[0]
-		for _, acc := range wall.Accounts {
-			if acc.Default {
-				facc = acc
-				break
-			}
-		}
-	}
-	if facc == nil || facc.IsMultiSig() {
-		return MakeNeoTx(ctx, wall, from, to, amount, nil)
-	}
-	pass, err := input.ReadPassword(fmt.Sprintf("Enter %s password > ", facc.Address))
+	facc, err := DecideFrom(ctx)
 	if err != nil {
-		return cli.NewExitError(fmt.Errorf("error reading password: %w", err), 1)
-	}
-	err = facc.Decrypt(pass, wall.Scrypt)
-	if err != nil {
-		return cli.NewExitError(fmt.Errorf("unable to decrypt account: %s", facc.Address), 1)
+		return err
 	}
 	return MakeEthTx(ctx, facc, &to, amount, nil)
 }

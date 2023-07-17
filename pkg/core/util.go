@@ -1,12 +1,10 @@
 package core
 
 import (
-	"math/big"
 	"time"
 
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/block"
-	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/native"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core/transaction"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/hash"
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/crypto/keys"
@@ -31,69 +29,11 @@ func createGenesisBlock(cfg *config.ProtocolConfiguration) (*block.Block, error)
 			InvocationScript:   []byte{},
 		},
 	}
-	h := hash.Keccak256([]byte("initialize()"))
-	initData := h[:4]
-	gas := (transaction.EthLegacyBaseLength + 4) * native.DefaultFeePerByte
-	gasPrice := big.NewInt(int64(native.DefaultGasPrice))
-	from := common.HexToAddress("01")
 	b := &block.Block{
-		Header: base,
-		Transactions: []*transaction.Transaction{
-			transaction.NewTx(&transaction.NeoTx{
-				Nonce:    0,
-				GasPrice: gasPrice,
-				Gas:      gas,
-				From:     from,
-				To:       &native.DesignationAddress,
-				Data:     initData,
-				Value:    big.NewInt(0),
-				Witness: transaction.Witness{
-					InvocationScript:   []byte{0},
-					VerificationScript: []byte{0},
-				},
-			}),
-			transaction.NewTx(&transaction.NeoTx{
-				Nonce:    0,
-				GasPrice: gasPrice,
-				Gas:      gas,
-				From:     from,
-				To:       &native.PolicyAddress,
-				Data:     initData,
-				Value:    big.NewInt(0),
-				Witness: transaction.Witness{
-					InvocationScript:   []byte{0},
-					VerificationScript: []byte{0},
-				},
-			}),
-			transaction.NewTx(&transaction.NeoTx{
-				Nonce:    0,
-				GasPrice: gasPrice,
-				Gas:      gas,
-				From:     from,
-				To:       &native.GASAddress,
-				Data:     initData,
-				Value:    big.NewInt(0),
-				Witness: transaction.Witness{
-					InvocationScript:   []byte{0},
-					VerificationScript: []byte{0},
-				},
-			}),
-			transaction.NewTx(&transaction.NeoTx{
-				GasPrice: gasPrice,
-				Gas:      gas,
-				From:     from,
-				To:       &native.ManagementAddress,
-				Data:     initData,
-				Value:    big.NewInt(0),
-				Witness: transaction.Witness{
-					InvocationScript:   []byte{0},
-					VerificationScript: []byte{0},
-				},
-			}),
-		},
+		Header:       base,
+		Transactions: []*transaction.Transaction{},
 	}
 	b.RebuildMerkleRoot()
-
 	return b, nil
 }
 

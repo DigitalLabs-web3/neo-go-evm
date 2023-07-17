@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -147,7 +146,6 @@ var rpcHandlers = map[string]func(*Server, request.Params) (interface{}, *respon
 
 	// -- start neo api
 	"getversion":           (*Server).getVersion,
-	"calculategas":         (*Server).calculateGas,
 	"findstates":           (*Server).findStates,
 	"getbestblockhash":     (*Server).getBestBlockHash,
 	"getblock":             (*Server).getBlock,
@@ -172,7 +170,6 @@ var rpcHandlers = map[string]func(*Server, request.Params) (interface{}, *respon
 	"gettransactionheight": (*Server).getTransactionHeight,
 	"getvalidators":        (*Server).getValidators,
 	"getnextvalidators":    (*Server).getNextValidators,
-	"sendrawtransaction":   (*Server).sendrawtransaction,
 	"validateaddress":      (*Server).validateAddress,
 	"verifyproof":          (*Server).verifyProof,
 	"isblocked":            (*Server).isBlocked,
@@ -747,12 +744,11 @@ func (s *Server) eth_signTransaction(params request.Params) (interface{}, *respo
 		Value: txObj.Value,
 		Data:  txObj.Data,
 	}
-	inner := &transaction.EthTx{
+	tx := &transaction.Transaction{
 		Transaction: *types.NewTx(ltx),
 		ChainID:     s.chainId,
 		Sender:      txObj.From,
 	}
-	tx := transaction.NewTx(inner)
 	fakeBlock, _, err := s.chain.GetBlock(s.chain.CurrentBlockHash(), false)
 	if err != nil {
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
@@ -764,8 +760,8 @@ func (s *Server) eth_signTransaction(params request.Params) (interface{}, *respo
 		}
 	}
 	var left uint64
-	if inner.To() == nil {
-		_, _, left, err = ic.VM.Create(ic, inner.Data(), TestGas, inner.Value())
+	if tx.To() == nil {
+		_, _, left, err = ic.VM.Create(ic, tx.Data(), TestGas, tx.Value())
 	} else {
 		_, left, err = ic.VM.Call(ic, *tx.To(), tx.Data(), TestGas, tx.Value())
 	}
@@ -806,12 +802,11 @@ func (s *Server) eth_sendTransaction(params request.Params) (interface{}, *respo
 		Value:    txObj.Value,
 		Data:     txObj.Data,
 	}
-	inner := &transaction.EthTx{
+	tx := &transaction.Transaction{
 		Transaction: *types.NewTx(ltx),
 		ChainID:     s.chainId,
 		Sender:      txObj.From,
 	}
-	tx := transaction.NewTx(inner)
 	fakeBlock, _, err := s.chain.GetBlock(s.chain.CurrentBlockHash(), false)
 	if err != nil {
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
@@ -823,7 +818,7 @@ func (s *Server) eth_sendTransaction(params request.Params) (interface{}, *respo
 		}
 	}
 	var left uint64
-	if inner.To() == nil {
+	if tx.To() == nil {
 		_, _, left, err = ic.VM.Create(ic, tx.Data(), TestGas, tx.Value())
 	} else {
 		_, left, err = ic.VM.Call(ic, *tx.To(), tx.Data(), TestGas, tx.Value())
@@ -852,11 +847,15 @@ func (s *Server) eth_sendRawTransaction(params request.Params) (interface{}, *re
 	if err != nil {
 		return nil, response.NewInvalidParamsError(fmt.Sprintf("invalid hex: %s", err), err)
 	}
-	etx, err := transaction.NewEthTxFromBytes(rawTx)
+	etx := new(types.Transaction)
+	err = etx.UnmarshalBinary(rawTx)
 	if err != nil {
 		return nil, response.NewInvalidParamsError("can't unmarshal raw transaction", err)
 	}
-	tx := transaction.NewTx(etx)
+	tx, err := transaction.NewTx(etx)
+	if err != nil {
+		return nil, response.NewInvalidParamsError("can't unmarshal raw transaction", err)
+	}
 	return getRelayResult(s.coreServer.RelayTxn(tx), tx.Hash())
 }
 
@@ -879,12 +878,11 @@ func (s *Server) eth_call(params request.Params) (interface{}, *response.Error) 
 		Value:    txObj.Value,
 		Data:     txObj.Data,
 	}
-	inner := &transaction.EthTx{
+	tx := &transaction.Transaction{
 		Transaction: *types.NewTx(ltx),
 		ChainID:     s.chainId,
 		Sender:      txObj.From,
 	}
-	tx := transaction.NewTx(inner)
 	block, _, err := s.chain.GetBlock(s.chain.CurrentBlockHash(), false)
 	if err != nil {
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
@@ -896,7 +894,7 @@ func (s *Server) eth_call(params request.Params) (interface{}, *response.Error) 
 		}
 	}
 	var ret []byte
-	if inner.To() == nil {
+	if tx.To() == nil {
 		ret, _, _, err = ic.VM.Create(ic, tx.Data(), TestGas, tx.Value())
 	} else {
 		ret, _, err = ic.VM.Call(ic, *tx.To(), tx.Data(), TestGas, tx.Value())
@@ -915,38 +913,20 @@ func (s *Server) eth_estimateGas(reqParams request.Params) (interface{}, *respon
 	if err != nil {
 		return nil, response.NewInvalidParamsError(fmt.Sprintf("Could not unmarshal tx object: %s", err), err)
 	}
-	var tx *transaction.Transaction
-	if txObj.Witness == nil {
-		ltx := &types.LegacyTx{
-			Nonce:    s.chain.GetNonce(txObj.From) + 1,
-			GasPrice: s.chain.GetGasPrice(),
-			Gas:      txObj.Gas,
-			To:       txObj.To,
-			Value:    txObj.Value,
-			Data:     txObj.Data,
-		}
-		inner := &transaction.EthTx{
-			Transaction: *types.NewTx(ltx),
-			ChainID:     s.chainId,
-			Sender:      txObj.From,
-		}
-		tx = transaction.NewTx(inner)
-	} else {
-		inner := &transaction.NeoTx{
-			Nonce:    s.chain.GetNonce(txObj.From) + 1,
-			From:     txObj.From,
-			GasPrice: s.chain.GetGasPrice(),
-			Gas:      txObj.Gas,
-			To:       txObj.To,
-			Value:    txObj.Value,
-			Data:     txObj.Data,
-			Witness:  *txObj.Witness,
-		}
-		if len(inner.Witness.VerificationScript) == 0 {
-			return nil, response.NewInvalidParamsError("missing verification script", nil)
-		}
-		tx = transaction.NewTx(inner)
+	ltx := &types.LegacyTx{
+		Nonce:    s.chain.GetNonce(txObj.From) + 1,
+		GasPrice: s.chain.GetGasPrice(),
+		Gas:      txObj.Gas,
+		To:       txObj.To,
+		Value:    txObj.Value,
+		Data:     txObj.Data,
 	}
+	tx := &transaction.Transaction{
+		Transaction: *types.NewTx(ltx),
+		ChainID:     s.chainId,
+		Sender:      txObj.From,
+	}
+
 	block, _, err := s.chain.GetBlock(s.chain.CurrentBlockHash(), false)
 	if err != nil {
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
@@ -1252,12 +1232,11 @@ func (s *Server) trace_call(params request.Params) (interface{}, *response.Error
 		Value:    txObj.Value,
 		Data:     txObj.Data,
 	}
-	inner := &transaction.EthTx{
+	tx := &transaction.Transaction{
 		Transaction: *types.NewTx(ltx),
 		ChainID:     s.chainId,
 		Sender:      txObj.From,
 	}
-	tx := transaction.NewTx(inner)
 	block, _, err := s.chain.GetBlock(s.chain.CurrentBlockHash(), false)
 	if err != nil {
 		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
@@ -1270,7 +1249,7 @@ func (s *Server) trace_call(params request.Params) (interface{}, *response.Error
 		}
 	}
 	var ret []byte
-	if inner.To() == nil {
+	if tx.To() == nil {
 		ret, _, _, err = ic.VM.Create(ic, tx.Data(), TestGas, tx.Value())
 	} else {
 		ret, _, err = ic.VM.Call(ic, *tx.To(), tx.Data(), TestGas, tx.Value())
@@ -1314,13 +1293,13 @@ func (s *Server) getBlock(params request.Params) (interface{}, *response.Error) 
 	} else {
 		hash = s.chain.GetHeaderHash(height)
 	}
-	raw := false
+	pretty := false
 	if len(params) > 1 {
 		r, e := params[1].GetBoolean()
 		if err != nil {
 			return nil, response.NewInvalidParamsError("can't parse bool", e)
 		}
-		raw = r
+		pretty = r
 	}
 	block, _, e := s.chain.GetBlock(hash, true)
 	if e != nil {
@@ -1329,12 +1308,12 @@ func (s *Server) getBlock(params request.Params) (interface{}, *response.Error) 
 		}
 		return nil, response.NewInternalServerError(fmt.Sprintf("Problem locating block with hash: %s", hash), err)
 	}
-	if raw {
+	if !pretty {
 		b, e := io.ToByteArray(block)
 		if e != nil {
 			return nil, response.NewInternalServerError("can't encode block", e)
 		}
-		return hex.EncodeToString(b), nil
+		return b, nil
 	} else {
 		return block, nil
 	}
@@ -1402,7 +1381,7 @@ func (s *Server) getVersion(_ request.Params) (interface{}, *response.Error) {
 			MaxTransactionsPerBlock:   cfg.MaxTransactionsPerBlock,
 			MemoryPoolMaxTransactions: cfg.MemPoolSize,
 			ValidatorsCount:           byte(len(validators)),
-			InitialGasDistribution:    cfg.InitialGASSupply,
+			InitialGasDistribution:    cfg.InitialGASPerValidator,
 		},
 	}, nil
 }
@@ -1444,56 +1423,6 @@ func (s *Server) validateAddress(reqParams request.Params) (interface{}, *respon
 	}, nil
 }
 
-// calculateNetworkFee calculates network fee for the transaction.
-func (s *Server) calculateGas(reqParams request.Params) (interface{}, *response.Error) {
-	if len(reqParams) < 1 {
-		return 0, response.ErrInvalidParams
-	}
-	byteTx, err := reqParams[0].GetBytesHex()
-	if err != nil {
-		return 0, response.WrapErrorWithData(response.ErrInvalidParams, err)
-	}
-	neoTx, err := transaction.NewNeoTxFromBytes(byteTx)
-	if err != nil {
-		return 0, response.WrapErrorWithData(response.ErrInvalidParams, err)
-	}
-	if len(neoTx.Witness.VerificationScript) == 0 {
-		return nil, response.NewInvalidParamsError("missing verification script", nil)
-	}
-	tx := transaction.NewTx(neoTx)
-	feePerByte := s.chain.GetFeePerByte()
-	netfee := transaction.CalculateNetworkFee(tx, feePerByte)
-	if err != nil {
-		return nil, response.NewInvalidRequestError(fmt.Sprintf("Could not calculate network fee: %s", err), err)
-	}
-	block, _, err := s.chain.GetBlock(s.chain.CurrentBlockHash(), false)
-	if err != nil {
-		return nil, response.NewInternalServerError(fmt.Sprintf("Could not get current block: %s", err), err)
-	}
-	fakeBlock := *block
-	ic, err := s.chain.GetTestVM(tx, &fakeBlock, nil)
-	if err != nil {
-		if err != nil {
-			return nil, response.NewInternalServerError(fmt.Sprintf("Could not create execute context: %s", err), err)
-		}
-	}
-	var left uint64
-	if neoTx.To == nil {
-		_, _, left, err = ic.VM.Create(ic, tx.Data(), TestGas, tx.Value())
-	} else {
-		_, left, err = ic.VM.Call(ic, *tx.To(), tx.Data(), TestGas, tx.Value())
-	}
-	if err != nil {
-		return nil, response.NewInvalidRequestError(fmt.Sprintf("Could not executing data: %s", err), err)
-	}
-	neoTx.Gas = TestGas - left
-	neoTx.Gas += netfee + params.SstoreSentryGasEIP2200
-	if err != nil {
-		return 0, response.WrapErrorWithData(response.ErrInvalidParams, fmt.Errorf("failed to compute tx size: %w", err))
-	}
-	return result.NetworkFee{Value: neoTx.Gas}, nil
-}
-
 // getContractScriptHashFromParam returns the contract script hash by hex contract hash, address, id or native contract name.
 func (s *Server) contractScriptHashFromParam(param *request.Param) (common.Address, *response.Error) {
 	var result common.Address
@@ -1524,6 +1453,7 @@ func (s *Server) contractScriptHashFromParam(param *request.Param) (common.Addre
 
 func makeStorageKey(hash common.Address, key []byte) []byte {
 	skey := make([]byte, 20+len(key))
+	skey[0] = byte(storage.STStorage)
 	copy(skey, hash.Bytes())
 	copy(skey[20:], key)
 	return skey
@@ -1537,15 +1467,15 @@ func (s *Server) getProof(ps request.Params) (interface{}, *response.Error) {
 	}
 	root, err := ps.Value(0).GetHash()
 	if err != nil {
-		return nil, response.ErrInvalidParams
+		return nil, response.NewInvalidParamsError("invalid root hash", err)
 	}
 	sc, err := ps.Value(1).GetAddressFromHex()
 	if err != nil {
-		return nil, response.ErrInvalidParams
+		return nil, response.NewInvalidParamsError("invalid contract address", err)
 	}
 	key, err := ps.Value(2).GetBytesHex()
 	if err != nil {
-		return nil, response.ErrInvalidParams
+		return nil, response.NewInvalidParamsError("invalid key", err)
 	}
 	cs, respErr := s.getHistoricalContractState(root, sc)
 	if respErr != nil {
@@ -1722,7 +1652,10 @@ func (s *Server) getHistoricalContractState(root common.Hash, csHash common.Addr
 	}
 	contract := new(state.Contract)
 	err = io.FromByteArray(contract, csBytes)
-	return contract, response.NewRPCError("Failed get contract state", "", err)
+	if err != nil {
+		return nil, response.NewRPCError("Failed get contract state", "", err)
+	}
+	return contract, nil
 }
 
 func (s *Server) getStateHeight(_ request.Params) (interface{}, *response.Error) {
@@ -1738,6 +1671,10 @@ func (s *Server) getStateRoot(ps request.Params) (interface{}, *response.Error) 
 	p := ps.Value(0)
 	if p == nil {
 		return nil, response.NewRPCError("Invalid parameter.", "", nil)
+	}
+	pretty, err := ps.Value(1).GetBoolean()
+	if err != nil {
+		pretty = false
 	}
 	var rt *state.MPTRoot
 	var h common.Hash
@@ -1756,6 +1693,13 @@ func (s *Server) getStateRoot(ps request.Params) (interface{}, *response.Error) 
 	}
 	if err != nil {
 		return nil, response.NewRPCError("Unknown state root.", "", err)
+	}
+	if !pretty {
+		b, err := io.ToByteArray(rt)
+		if err != nil {
+			return nil, response.NewInternalServerError("can't encode state root", err)
+		}
+		return b, nil
 	}
 	return rt, nil
 }
@@ -1958,22 +1902,6 @@ func getRelayResult(err error, hash common.Hash) (interface{}, *response.Error) 
 	default:
 		return nil, response.WrapErrorWithData(response.ErrValidationFailed, err)
 	}
-}
-
-func (s *Server) sendrawtransaction(reqParams request.Params) (interface{}, *response.Error) {
-	if len(reqParams) < 1 {
-		return nil, response.NewInvalidParamsError("not enough parameters", nil)
-	}
-	byteTx, err := reqParams[0].GetBytesHex()
-	if err != nil {
-		return nil, response.NewInvalidParamsError(err.Error(), err)
-	}
-	NeoTx, err := transaction.NewNeoTxFromBytes(byteTx)
-	if err != nil {
-		return nil, response.NewInvalidParamsError("can't decode transaction", err)
-	}
-	tx := transaction.NewTx(NeoTx)
-	return getRelayResult(s.coreServer.RelayTxn(tx), tx.Hash())
 }
 
 func (s *Server) getMinted(reqParams request.Params) (interface{}, *response.Error) {

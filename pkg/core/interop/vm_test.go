@@ -22,7 +22,7 @@ type testNativeContracts struct {
 func newTestNativeContracts() *testNativeContracts {
 	return &testNativeContracts{
 		cs: native.NewContracts(config.ProtocolConfiguration{
-			InitialGASSupply: 100,
+			InitialGASPerValidator: 100,
 		}),
 	}
 }

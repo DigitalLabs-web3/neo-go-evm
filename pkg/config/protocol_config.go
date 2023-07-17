@@ -18,8 +18,8 @@ type (
 		ChainID     uint64 `yaml:"ChainID"`
 		MemPoolSize int    `yaml:"MemPoolSize"`
 
-		// InitialGASSupply is the amount of GAS generated in the genesis block.
-		InitialGASSupply uint64 `yaml:"InitialGASSupply"`
+		// InitialGASPerValidator is the amount of GAS generated for a validator in the genesis block.
+		InitialGASPerValidator uint64 `yaml:"InitialGASPerValidator"`
 		// KeepOnlyLatestState specifies if MPT should only store latest state.
 		// If true, DB size will be smaller, but older roots won't be accessible.
 		// This value should remain the same for the same database.

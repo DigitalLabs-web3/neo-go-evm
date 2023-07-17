@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/config"
@@ -18,4 +19,12 @@ func TestGenesisBlock(t *testing.T) {
 	err = io.FromByteArray(bb, bs)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(bb.Transactions))
+}
+
+func TestGenesisEncode(t *testing.T) {
+	b, err := hex.DecodeString("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000065fc8857000000001dac2b7c0000000000000000003285f72d756ce0c5fd96f93512eb0ebda8b9f9d1000000")
+	assert.NoError(t, err)
+	blk := new(block.Block)
+	err = io.FromByteArray(blk, b)
+	assert.NoError(t, err)
 }
