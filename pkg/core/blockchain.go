@@ -821,7 +821,12 @@ func (bc *Blockchain) storeBlock(block *block.Block, txpool *mempool.Pool) error
 	bc.topBlock.Store(block)
 	bc.topBlockAer.Store(aer)
 	atomic.StoreUint32(&bc.blockHeight, block.Index)
-	bc.memPool.RemoveStale(func(tx *transaction.Transaction) bool { return bc.IsTxStillRelevant(tx, txpool, false) }, bc)
+	senders := bc.memPool.RemoveStale(func(tx *transaction.Transaction) bool { return bc.IsTxStillRelevant(tx, txpool, false) }, bc)
+	// refresh nonce for deleted items
+	for sender := range senders {
+		bc.memPool.RefreshNonce(sender, bc.GetNonce(sender))
+	}
+
 	for _, f := range bc.postBlock {
 		f(bc.IsTxStillRelevant, txpool, block)
 	}
@@ -1291,14 +1296,18 @@ func (bc *Blockchain) verifyAndPoolTx(t *transaction.Transaction, pool *mempool.
 		return err
 	}
 
-	from := t.From()
-	// we should allow user to replace tx with higher gas price, so allow all tx form db nonce to pending nonce
-	if !pool.CheckNonceContinue(t, bc.GetNonce(from)) {
-		return fmt.Errorf("invalid nonce, addr=%s, nonce=%d, pending nonce=%d", t.From(), t.Nonce(), pool.PendingNonce(from))
-	}
-
 	if err := bc.PolicyCheck(t); err != nil {
 		return fmt.Errorf("%w: %v", ErrPolicy, err)
+	}
+
+	from := t.From()
+	// set db nonce if not set before
+	if pool.GetDBNonce(from) == 0 {
+		pool.SetDBNonce(from, bc.GetNonce(from))
+	}
+	// we should allow user to replace tx with higher gas price, so allow all tx form db nonce to pending nonce
+	if !pool.CheckNonceContinue(t) {
+		return fmt.Errorf("invalid nonce, addr=%s, nonce=%d, pending nonce=%d", t.From(), t.Nonce(), pool.PendingNonce(from))
 	}
 
 	err = pool.Add(t, feer, data...)
@@ -1341,21 +1350,13 @@ func (bc *Blockchain) PolicyCheck(t *transaction.Transaction) error {
 // was already done so we don't need to check basic things like size, input/output
 // correctness, presence in blocks before the new one, etc.
 func (bc *Blockchain) IsTxStillRelevant(t *transaction.Transaction, txpool *mempool.Pool, isPartialTx bool) bool {
-	var recheckWitness bool
+	// check tx on chain
 	if txpool == nil {
 		if bc.dao.HasTransaction(t.Hash()) != nil {
 			return false
 		}
 	} else if txpool.HasConflicts(t, bc) {
 		return false
-	}
-	// check nonce continuity
-	if !txpool.CheckNonceContinue(t, bc.GetNonce(t.From())) {
-		return false
-	}
-
-	if recheckWitness {
-		return t.Verify(bc.config.ChainID) == nil
 	}
 	return true
 }

@@ -59,6 +59,7 @@ type Pool struct {
 	fees         map[common.Address]utilityBalanceAndFees
 
 	pendingNonces map[common.Address]uint64
+	dbNonces      map[common.Address]uint64
 	senderMap     map[common.Address]map[uint64]*poolItem
 
 	capacity   int
@@ -237,6 +238,7 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 	if conflict == nil {
 		mp.pendingNonces[t.From()] = t.Nonce() + 1
 	}
+	// fmt.Println("### Add nonce: " + strconv.FormatUint(t.Nonce(), 10))
 	// we already checked balance in checkTxConflicts, so don't need to check again
 	mp.tryAddSendersFee(pItem.txn, fee, false)
 	updateMempoolMetrics(len(mp.verifiedTxes))
@@ -250,22 +252,37 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 	return nil
 }
 
-// get pending nonce of from
-func (mp *Pool) PendingNonce(addr common.Address) uint64 {
+// set db nonce of from
+func (mp *Pool) SetDBNonce(addr common.Address, dbNonce uint64) {
 	mp.lock.Lock()
 	defer mp.lock.Unlock()
+	mp.dbNonces[addr] = dbNonce
+}
+
+// set db nonce of from
+func (mp *Pool) GetDBNonce(addr common.Address) uint64 {
+	mp.lock.RLock()
+	defer mp.lock.RUnlock()
+	return mp.dbNonces[addr]
+}
+
+// get pending nonce of from
+func (mp *Pool) PendingNonce(addr common.Address) uint64 {
+	mp.lock.RLock()
+	defer mp.lock.RUnlock()
 	return mp.pendingNonces[addr]
 }
 
 // check the current tx is continue in memory pool
-func (mp *Pool) CheckNonceContinue(tx *transaction.Transaction, dbNonce uint64) bool {
-	mp.lock.Lock()
-	defer mp.lock.Unlock()
-	return mp.checkNonceContinue(tx, dbNonce)
+func (mp *Pool) CheckNonceContinue(tx *transaction.Transaction) bool {
+	mp.lock.RLock()
+	defer mp.lock.RUnlock()
+	return mp.checkNonceContinue(tx)
 }
 
-func (mp *Pool) checkNonceContinue(tx *transaction.Transaction, dbNonce uint64) bool {
+func (mp *Pool) checkNonceContinue(tx *transaction.Transaction) bool {
 	// nonce too low
+	dbNonce := mp.dbNonces[tx.From()]
 	if tx.Nonce() < dbNonce {
 		return false
 	}
@@ -321,26 +338,49 @@ func (mp *Pool) removeItemByIndex(num int) {
 }
 
 // refresh Nonce for sender, just use after batch remove items
-func (mp *Pool) refreshNonce(sender common.Address) {
+// remove transactions not continue
+func (mp *Pool) RefreshNonce(sender common.Address, dbNonce uint64) {
+	mp.lock.Lock()
+	defer mp.lock.Unlock()
 	nonceMap := mp.senderMap[sender]
+
+	// clear nonce map if no tx from sender
 	if len(nonceMap) == 0 {
-		mp.pendingNonces[sender] = 0
+		delete(mp.dbNonces, sender)
+		delete(mp.pendingNonces, sender)
 		return
 	}
 
-	min := ^uint64(0)
-	for k := range nonceMap {
-		if k < min {
-			min = k
+	// update dbNonces
+	mp.dbNonces[sender] = dbNonce
+
+	// check the continuity from dbNonce to pending nonce
+	for i := dbNonce; i < mp.pendingNonces[sender]; i++ {
+		if _, ok := mp.senderMap[sender][i]; !ok {
+			mp.pendingNonces[sender] = i
+			break
 		}
 	}
-	mp.pendingNonces[sender] = min + 1
+
+	// remove txs not continue from dbNonce
+	for nonce, tx := range nonceMap {
+		if nonce < dbNonce || nonce > mp.pendingNonces[sender] {
+			mp.removeInternal(tx.txn)
+		}
+	}
+
+	// clear nonce map if no tx from sender
+	if len(nonceMap) == 0 {
+		delete(mp.dbNonces, sender)
+		delete(mp.pendingNonces, sender)
+		return
+	}
 }
 
 // RemoveStale filters verified transactions through the given function keeping
 // only the transactions for which it returns a true result. It's used to quickly
 // drop part of the mempool that is now invalid after the block acceptance.
-func (mp *Pool) RemoveStale(isOK func(*transaction.Transaction) bool, feer Feer) {
+func (mp *Pool) RemoveStale(isOK func(*transaction.Transaction) bool, feer Feer) map[common.Address]struct{} {
 	mp.lock.Lock()
 	defer mp.lock.Unlock()
 	policyChanged := mp.loadPolicy(feer)
@@ -378,15 +418,12 @@ func (mp *Pool) RemoveStale(isOK func(*transaction.Transaction) bool, feer Feer)
 			}
 		}
 	}
-	// the txs whoes nonce after the removed one should also be remove in the above loop, so just find the min nonce in senderMap
-	for k := range senderRefershMap {
-		mp.refreshNonce(k)
-	}
 
 	if len(staleItems) != 0 {
 		go mp.resendStaleItems(staleItems)
 	}
 	mp.verifiedTxes = newVerifiedTxes
+	return senderRefershMap
 }
 
 // loadPolicy updates feePerByte field and returns whether policy has been
@@ -412,8 +449,9 @@ func (mp *Pool) checkPolicy(tx *transaction.Transaction, policyChanged bool) boo
 func New(capacity int, payerIndex int, enableSubscriptions bool) *Pool {
 	mp := &Pool{
 		verifiedMap:          make(map[common.Hash]*transaction.Transaction, capacity),
-		senderMap:            make(map[common.Address]map[uint64]*poolItem, capacity/2),
-		pendingNonces:        make(map[common.Address]uint64, capacity/2),
+		senderMap:            make(map[common.Address]map[uint64]*poolItem, capacity/4),
+		pendingNonces:        make(map[common.Address]uint64, capacity/4),
+		dbNonces:             make(map[common.Address]uint64, capacity/4),
 		verifiedTxes:         make([]poolItem, 0, capacity),
 		capacity:             capacity,
 		payerIndex:           payerIndex,
