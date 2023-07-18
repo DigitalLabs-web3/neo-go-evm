@@ -469,7 +469,7 @@ func dumpKeys(ctx *cli.Context) error {
 
 		fmt.Println("simple signature contract:")
 		fmt.Fprintf(ctx.App.Writer, "address: %s \n", acc.Address)
-		fmt.Fprintf(ctx.App.Writer, "public key: %s \n", hex.EncodeToString((acc.Script)[1:]))
+		fmt.Fprintf(ctx.App.Writer, "public key: %s \n", hex.EncodeToString((acc.Script)))
 		hasPrinted = true
 	}
 	return nil
