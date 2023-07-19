@@ -21,8 +21,7 @@ func (f *LogFilter) Match(l *types.Log) bool {
 		return false
 	}
 	if f.FromBlock != 0 && f.ToBlock != 0 {
-		if f.Blockhash == (common.Hash{}) && (l.BlockNumber <= uint64(f.FromBlock) || l.BlockNumber >= uint64(f.ToBlock)) {
-			println("block")
+		if f.Blockhash == (common.Hash{}) && (l.BlockNumber < uint64(f.FromBlock) || l.BlockNumber > uint64(f.ToBlock)) {
 			return false
 		}
 	}
