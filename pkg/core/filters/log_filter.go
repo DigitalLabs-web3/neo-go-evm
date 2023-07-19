@@ -22,14 +22,14 @@ func (f *LogFilter) Match(l *types.Log) bool {
 	}
 	if f.FromBlock != 0 && f.ToBlock != 0 {
 		if f.Blockhash == (common.Hash{}) && (l.BlockNumber <= uint64(f.FromBlock) || l.BlockNumber >= uint64(f.ToBlock)) {
-			println("hash")
+			println("block")
 			return false
 		}
 	}
 
 	if len(f.Address) > 0 {
 		if !Contains(f.Address, l.Address) {
-			println("hash")
+			println("address")
 			return false
 		}
 	}
