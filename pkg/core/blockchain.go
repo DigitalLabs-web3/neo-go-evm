@@ -1498,7 +1498,7 @@ func (bc *Blockchain) GetLogs(filter *filters.LogFilter) ([]*types.Log, error) {
 	if filter.Blockhash != (common.Hash{}) {
 		blockhashes = append(blockhashes, filter.Blockhash)
 	} else {
-		for i := filter.FromBlock; i < filter.ToBlock; i++ {
+		for i := filter.FromBlock; i <= filter.ToBlock; i++ {
 			hash := bc.GetHeaderHash(int(i))
 			if hash == (common.Hash{}) {
 				break
@@ -1517,6 +1517,7 @@ func (bc *Blockchain) GetLogs(filter *filters.LogFilter) ([]*types.Log, error) {
 		}
 		for _, tx := range block.Transactions {
 			_, appExec, err := bc.GetTransaction(tx.Hash())
+			println("=========", appExec.Logs)
 			if err != nil {
 				return nil, err
 			}
