@@ -755,7 +755,8 @@ func (bc *Blockchain) storeBlock(block *block.Block, txpool *mempool.Pool) error
 		if execErr == nil {
 			aer.Status = 1
 		}
-		aer.PostState = []byte{byte(aer.Status)}
+		//aer.PostState = []byte{byte(aer.Status)}
+		aer.PostState = block.MerkleRoot.Bytes()
 		appExecResults = append(appExecResults, aer)
 		aerchan <- aer
 	}
@@ -1293,6 +1294,7 @@ func (bc *Blockchain) verifyAndPoolTx(t *transaction.Transaction, pool *mempool.
 
 	from := t.From()
 	nonce := bc.GetNonce(from)
+
 	if t.Nonce() != nonce {
 		return fmt.Errorf("invalid nonce, addr=%s, nonce=%d, expect=%d", t.From(), t.Nonce(), nonce)
 	}
