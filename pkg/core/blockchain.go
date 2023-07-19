@@ -1528,7 +1528,7 @@ func (bc *Blockchain) GetLogs(filter *filters.LogFilter) ([]*types.Log, error) {
 			}
 			if appExec != nil {
 				for _, l := range appExec.Logs {
-					fmt.Println("logs=========", appExec.Logs)
+					fmt.Println("logs=========", l.Address, l.BlockNumber)
 					if filter.Match(l) {
 						logs = append(logs, l)
 					}
