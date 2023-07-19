@@ -1515,7 +1515,7 @@ func (bc *Blockchain) GetLogs(filter *filters.LogFilter) ([]*types.Log, error) {
 	logs := []*types.Log{}
 	for _, hash := range blockhashes {
 		block, _, err := bc.GetBlock(hash, false)
-		fmt.Println("block=========", filter)
+		fmt.Println("block=========", block.Transactions)
 		if err != nil {
 			return nil, err
 		}
