@@ -1520,6 +1520,7 @@ func (bc *Blockchain) GetLogs(filter *filters.LogFilter) ([]*types.Log, error) {
 			return nil, err
 		}
 		for _, tx := range block.Transactions {
+			fmt.Println("tx=========", tx.Hash())
 			_, appExec, err := bc.GetTransaction(tx.Hash())
 
 			if err != nil {
