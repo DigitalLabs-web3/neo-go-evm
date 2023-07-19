@@ -2,8 +2,6 @@ package filters
 
 import (
 	"encoding/json"
-	"github.com/DigitalLabs-web3/neo-go-evm/pkg/core"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -28,7 +26,7 @@ func (f *LogFilter) Match(l *types.Log) bool {
 	}
 
 	if len(f.Address) > 0 {
-		if !core.Contains(f.Address, l.Address) {
+		if !Contains(f.Address, l.Address) {
 			return false
 		}
 	}
@@ -87,4 +85,13 @@ func (f *LogFilter) UnmarshalJSON(b []byte) error {
 	f.Address = lf.Address
 	f.Topics = lf.Topics
 	return nil
+}
+
+func Contains[T comparable](elems []T, v T) bool {
+	for _, s := range elems {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }
