@@ -17,7 +17,6 @@ type LogFilter struct {
 
 func (f *LogFilter) Match(l *types.Log) bool {
 	if f.Blockhash != (common.Hash{}) && l.BlockHash != f.Blockhash {
-		println("hash")
 		return false
 	}
 	if f.FromBlock != 0 && f.ToBlock != 0 {
@@ -28,7 +27,6 @@ func (f *LogFilter) Match(l *types.Log) bool {
 
 	if len(f.Address) > 0 {
 		if !Contains(f.Address, l.Address) {
-			println("address")
 			return false
 		}
 	}
