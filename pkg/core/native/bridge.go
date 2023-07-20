@@ -326,11 +326,17 @@ func (b *Bridge) newBurnId(d *dao.Simple) []byte {
 	return id
 }
 
+func parseBurnValue(value *big.Int) (amount *big.Int, sendBack *big.Int) {
+	amount = big.NewInt(0).Div(value, _10GWei)
+	sendBack = big.NewInt(0).Sub(value, big.NewInt(0).Mul(amount, _10GWei))
+	return
+}
+
 func (b *Bridge) ContractCall_Payable_burn(ic InteropContext, to common.Address) error {
 	val := ic.Value()
 	value := &val
-	value = big.NewInt(0).Div(value, _10GWei)
-	if value.Cmp(MintThreashold) < 0 {
+	amount, sendBack := parseBurnValue(value)
+	if amount.Cmp(MintThreashold) < 0 {
 		return ErrUnreachThreshold
 	}
 	from := ic.Sender()
@@ -338,12 +344,15 @@ func (b *Bridge) ContractCall_Payable_burn(ic InteropContext, to common.Address)
 		txId:   ic.Container().Hash(),
 		from:   from,
 		to:     to,
-		amount: value.Uint64(),
+		amount: amount.Uint64(),
 	}
 	burnId := b.newBurnId(ic.Dao())
 	ic.Dao().PutStorageItem(b.Address, createBurnKey(burnId), state.Bytes())
-	b.cs.GAS.Burn(ic.Dao(), from, value)
-	log(ic, b.Address, value.Bytes(), b.Abi.Events["burn"].ID, to.Hash(), common.BytesToHash(burnId))
+	b.cs.GAS.Burn(ic.Dao(), b.Address, value)
+	if sendBack.Cmp(big.NewInt(0)) > 0 {
+		b.cs.GAS.addTokens(ic.Dao(), from, sendBack)
+	}
+	log(ic, b.Address, amount.Bytes(), b.Abi.Events["burn"].ID, to.Hash(), common.BytesToHash(burnId))
 	return nil
 }
 

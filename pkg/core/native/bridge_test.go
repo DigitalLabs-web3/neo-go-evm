@@ -182,3 +182,11 @@ func TestStandbyScriptHash(t *testing.T) {
 	slice.Reverse(b[:])
 	t.Log(b)
 }
+
+func TestSendBack(t *testing.T) {
+	GWei := big.NewInt(1000000000)
+	value := big.NewInt(0).Mul(big.NewInt(1000000001), GWei)
+	amount, back := parseBurnValue(value)
+	assert.Equal(t, amount, big.NewInt(100000000))
+	assert.Equal(t, back, GWei)
+}
