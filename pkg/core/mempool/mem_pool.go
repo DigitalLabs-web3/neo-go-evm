@@ -33,15 +33,16 @@ var (
 	ErrConflictsNonce = errors.New("conflicts with memory pool due to nonce")
 )
 
-// item represents a transaction in the the Memory pool.
-type item struct {
+// poolItem represents a transaction in the the Memory pool.
+type poolItem struct {
 	txn        *transaction.Transaction
 	blockStamp uint32
 	data       interface{}
+	priority   big.Int
 }
 
 // items is a slice of item.
-type items []item
+type items []poolItem
 
 // utilityBalanceAndFees stores sender's balance and overall fees of
 // sender's transactions which are currently in mempool.
@@ -56,6 +57,10 @@ type Pool struct {
 	verifiedMap  map[common.Hash]*transaction.Transaction
 	verifiedTxes items
 	fees         map[common.Address]utilityBalanceAndFees
+
+	pendingNonces map[common.Address]uint64
+	dbNonces      map[common.Address]uint64
+	senderMap     map[common.Address]map[uint64]*poolItem
 
 	capacity   int
 	feePerByte uint64
@@ -82,15 +87,16 @@ func (p items) Less(i, j int) bool { return p[i].CompareTo(p[j]) < 0 }
 // difference < 0 implies p < otherP.
 // difference = 0 implies p = otherP.
 // difference > 0 implies p > otherP.
-func (p item) CompareTo(otherP item) int {
+func (p poolItem) CompareTo(otherP poolItem) int {
 	// Fees sorted ascending.
-	if ret := p.txn.GasPrice().Cmp(otherP.txn.GasPrice()); ret != 0 {
+	if ret := p.priority.Cmp(&otherP.priority); ret != 0 {
 		return ret
 	}
-	if p.txn.Gas() > otherP.txn.Gas() {
-		return 1
-	} else if p.txn.Gas() < otherP.txn.Gas() {
+	// nonce lower with higher priority
+	if p.txn.Nonce() > otherP.txn.Nonce() {
 		return -1
+	} else if p.txn.Nonce() > otherP.txn.Nonce() {
+		return 1
 	}
 	return p.txn.Hash().Big().Cmp(otherP.txn.Hash().Big())
 }
@@ -168,25 +174,30 @@ func checkBalance(tx *transaction.Transaction, balance utilityBalanceAndFees) (b
 
 // Add tries to add given transaction to the Pool.
 func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) error {
-	var pItem = item{
+	var pItem = poolItem{
 		txn:        t,
 		blockStamp: fee.BlockHeight(),
+		priority:   *t.GasPrice(),
 	}
 	if data != nil {
 		pItem.data = data[0]
 	}
 	mp.lock.Lock()
+	defer mp.lock.Unlock()
 	if mp.containsKey(t.Hash()) {
-		mp.lock.Unlock()
 		return ErrDup
 	}
 	conflict, err := mp.checkTxConflicts(t, fee)
 	if err != nil {
-		mp.lock.Unlock()
 		return err
 	}
 	if conflict != nil {
-		mp.removeInternal(conflict.Hash(), fee)
+		mp.removeInternal(conflict)
+	}
+	// if pre pending tx of same sender exists, set priority to previous tx
+	pre, ok := mp.senderMap[pItem.txn.From()][pItem.txn.Nonce()-1]
+	if ok && pItem.priority.Cmp(&pre.priority) == 1 {
+		pItem.priority = pre.priority
 	}
 	// Insert into sorted array (from max to min, that could also be done
 	// using sort.Sort(sort.Reverse()), but it incurs more overhead. Notice
@@ -202,21 +213,16 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 	if len(mp.verifiedTxes) == mp.capacity {
 		// Less prioritized than the least prioritized we already have, won't fit.
 		if n == len(mp.verifiedTxes) {
-			mp.lock.Unlock()
 			return ErrOOM
 		}
 		// Ditch the last one.
 		unlucky := mp.verifiedTxes[len(mp.verifiedTxes)-1]
-		delete(mp.verifiedMap, unlucky.txn.Hash())
-
-		mp.verifiedTxes[len(mp.verifiedTxes)-1] = pItem
-		if mp.subscriptionsOn.Load() {
-			mp.events <- mempoolevent.Event{
-				Type: mempoolevent.TransactionRemoved,
-				Tx:   unlucky.txn,
-				Data: unlucky.data,
-			}
+		mp.removeItemByIndex(len(mp.verifiedTxes) - 1)
+		mp.pendingNonces[unlucky.txn.From()]--
+		if len(mp.senderMap[unlucky.txn.From()]) == 0 {
+			mp.pendingNonces[unlucky.txn.From()] = 0
 		}
+
 	} else {
 		mp.verifiedTxes = append(mp.verifiedTxes, pItem)
 	}
@@ -225,12 +231,18 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 		mp.verifiedTxes[n] = pItem
 	}
 	mp.verifiedMap[t.Hash()] = t
+	if mp.senderMap[t.From()] == nil {
+		mp.senderMap[t.From()] = make(map[uint64]*poolItem)
+	}
+	mp.senderMap[t.From()][t.Nonce()] = &pItem
+	// only new tx need change nonce
+	if conflict == nil {
+		mp.pendingNonces[t.From()] = t.Nonce() + 1
+	}
+	// fmt.Println("### Add nonce: " + strconv.FormatUint(t.Nonce(), 10))
 	// we already checked balance in checkTxConflicts, so don't need to check again
 	mp.tryAddSendersFee(pItem.txn, fee, false)
-
 	updateMempoolMetrics(len(mp.verifiedTxes))
-	mp.lock.Unlock()
-
 	if mp.subscriptionsOn.Load() {
 		mp.events <- mempoolevent.Event{
 			Type: mempoolevent.TransactionAdded,
@@ -241,50 +253,137 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 	return nil
 }
 
-// Remove removes an item from the mempool, if it exists there (and does
-// nothing if it doesn't).
-func (mp *Pool) Remove(hash common.Hash, feer Feer) {
+// set db nonce of from
+func (mp *Pool) SetDBNonce(addr common.Address, dbNonce uint64) {
 	mp.lock.Lock()
-	mp.removeInternal(hash, feer)
-	mp.lock.Unlock()
+	defer mp.lock.Unlock()
+	mp.dbNonces[addr] = dbNonce
+}
+
+// set db nonce of from
+func (mp *Pool) GetDBNonce(addr common.Address) uint64 {
+	mp.lock.RLock()
+	defer mp.lock.RUnlock()
+	return mp.dbNonces[addr]
+}
+
+// get pending nonce of from
+func (mp *Pool) PendingNonce(addr common.Address) uint64 {
+	mp.lock.RLock()
+	defer mp.lock.RUnlock()
+	return mp.pendingNonces[addr]
+}
+
+// check the current tx is continue in memory pool
+func (mp *Pool) CheckNonceContinue(tx *transaction.Transaction) bool {
+	mp.lock.RLock()
+	defer mp.lock.RUnlock()
+	return mp.checkNonceContinue(tx)
+}
+
+func (mp *Pool) checkNonceContinue(tx *transaction.Transaction) bool {
+	// nonce too low
+	dbNonce := mp.dbNonces[tx.From()]
+	if tx.Nonce() < dbNonce {
+		return false
+	}
+	// check the continuity from dbNonce to current tx
+	for i := dbNonce; i < tx.Nonce(); i++ {
+		if _, ok := mp.senderMap[tx.From()][i]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 // removeInternal is an internal unlocked representation of Remove.
-func (mp *Pool) removeInternal(hash common.Hash, feer Feer) {
-	if tx, ok := mp.verifiedMap[hash]; ok {
-		var num int
-		delete(mp.verifiedMap, hash)
-		for num = range mp.verifiedTxes {
-			if hash == (mp.verifiedTxes[num].txn.Hash()) {
-				break
-			}
+// don't change nonce
+func (mp *Pool) removeInternal(tx *transaction.Transaction) {
+	item := mp.senderMap[tx.From()][tx.Nonce()]
+	// use priority to increase search
+	num := sort.Search(len(mp.verifiedTxes), func(n int) bool {
+		return item.CompareTo(mp.verifiedTxes[n]) >= 0
+	})
+	target := num
+	for i := num; i < len(mp.verifiedTxes); i++ {
+		if mp.verifiedTxes[i].txn.Hash() == tx.Hash() {
+			target = i
 		}
-		itm := mp.verifiedTxes[num]
-		if num < len(mp.verifiedTxes)-1 {
-			mp.verifiedTxes = append(mp.verifiedTxes[:num], mp.verifiedTxes[num+1:]...)
-		} else if num == len(mp.verifiedTxes)-1 {
-			mp.verifiedTxes = mp.verifiedTxes[:num]
-		}
-		payer := itm.txn.From()
-		senderFee := mp.fees[payer]
-		(&senderFee.feeSum).Sub(&senderFee.feeSum, tx.Cost())
-		mp.fees[payer] = senderFee
-		if mp.subscriptionsOn.Load() {
-			mp.events <- mempoolevent.Event{
-				Type: mempoolevent.TransactionRemoved,
-				Tx:   itm.txn,
-				Data: itm.data,
-			}
+	}
+	mp.removeItemByIndex(target)
+}
+
+// remove item from memory pool
+// don't change nonce
+func (mp *Pool) removeItemByIndex(num int) {
+	item := mp.verifiedTxes[num]
+	payer := item.txn.From()
+	delete(mp.verifiedMap, item.txn.Hash())
+	delete(mp.senderMap[payer], item.txn.Nonce())
+	if num < len(mp.verifiedTxes)-1 {
+		mp.verifiedTxes = append(mp.verifiedTxes[:num], mp.verifiedTxes[num+1:]...)
+	} else if num == len(mp.verifiedTxes)-1 {
+		mp.verifiedTxes = mp.verifiedTxes[:num]
+	}
+	senderFee := mp.fees[payer]
+	(&senderFee.feeSum).Sub(&senderFee.feeSum, item.txn.Cost())
+	mp.fees[payer] = senderFee
+	if mp.subscriptionsOn.Load() {
+		mp.events <- mempoolevent.Event{
+			Type: mempoolevent.TransactionRemoved,
+			Tx:   item.txn,
+			Data: item.data,
 		}
 	}
 	updateMempoolMetrics(len(mp.verifiedTxes))
 }
 
+// refresh Nonce for sender, just use after batch remove items
+// remove transactions not continue
+func (mp *Pool) RefreshNonce(sender common.Address, dbNonce uint64) {
+	mp.lock.Lock()
+	defer mp.lock.Unlock()
+	nonceMap := mp.senderMap[sender]
+
+	// clear nonce map if no tx from sender
+	if len(nonceMap) == 0 {
+		delete(mp.dbNonces, sender)
+		delete(mp.pendingNonces, sender)
+		return
+	}
+
+	// update dbNonces
+	mp.dbNonces[sender] = dbNonce
+
+	// check the continuity from dbNonce to pending nonce
+	for i := dbNonce; i < mp.pendingNonces[sender]; i++ {
+		if _, ok := mp.senderMap[sender][i]; !ok {
+			mp.pendingNonces[sender] = i
+			break
+		}
+	}
+
+	// remove txs not continue from dbNonce
+	for nonce, tx := range nonceMap {
+		if nonce < dbNonce || nonce > mp.pendingNonces[sender] {
+			mp.removeInternal(tx.txn)
+		}
+	}
+
+	// clear nonce map if no tx from sender
+	if len(nonceMap) == 0 {
+		delete(mp.dbNonces, sender)
+		delete(mp.pendingNonces, sender)
+		return
+	}
+}
+
 // RemoveStale filters verified transactions through the given function keeping
 // only the transactions for which it returns a true result. It's used to quickly
 // drop part of the mempool that is now invalid after the block acceptance.
-func (mp *Pool) RemoveStale(isOK func(*transaction.Transaction) bool, feer Feer) {
+func (mp *Pool) RemoveStale(isOK func(*transaction.Transaction) bool, feer Feer) map[common.Address]struct{} {
 	mp.lock.Lock()
+	defer mp.lock.Unlock()
 	policyChanged := mp.loadPolicy(feer)
 	// We can reuse already allocated slice
 	// because items are iterated one-by-one in increasing order.
@@ -292,8 +391,9 @@ func (mp *Pool) RemoveStale(isOK func(*transaction.Transaction) bool, feer Feer)
 	mp.fees = make(map[common.Address]utilityBalanceAndFees) // it'd be nice to reuse existing map, but we can't easily clear it
 	height := feer.BlockHeight()
 	var (
-		staleItems []item
+		staleItems []poolItem
 	)
+	senderRefershMap := make(map[common.Address]struct{})
 	for _, itm := range mp.verifiedTxes {
 		if isOK(itm.txn) && mp.checkPolicy(itm.txn, policyChanged) && mp.tryAddSendersFee(itm.txn, feer, true) {
 			newVerifiedTxes = append(newVerifiedTxes, itm)
@@ -307,6 +407,9 @@ func (mp *Pool) RemoveStale(isOK func(*transaction.Transaction) bool, feer Feer)
 			}
 		} else {
 			delete(mp.verifiedMap, itm.txn.Hash())
+			delete(mp.senderMap[itm.txn.From()], itm.txn.Nonce())
+			// when the tx removed, the nonce continuity may break
+			senderRefershMap[itm.txn.From()] = struct{}{}
 			if mp.subscriptionsOn.Load() {
 				mp.events <- mempoolevent.Event{
 					Type: mempoolevent.TransactionRemoved,
@@ -316,11 +419,12 @@ func (mp *Pool) RemoveStale(isOK func(*transaction.Transaction) bool, feer Feer)
 			}
 		}
 	}
+
 	if len(staleItems) != 0 {
 		go mp.resendStaleItems(staleItems)
 	}
 	mp.verifiedTxes = newVerifiedTxes
-	mp.lock.Unlock()
+	return senderRefershMap
 }
 
 // loadPolicy updates feePerByte field and returns whether policy has been
@@ -349,7 +453,10 @@ func (mp *Pool) checkPolicy(tx *transaction.Transaction, policyChanged bool) boo
 func New(capacity int, payerIndex int, enableSubscriptions bool) *Pool {
 	mp := &Pool{
 		verifiedMap:          make(map[common.Hash]*transaction.Transaction, capacity),
-		verifiedTxes:         make([]item, 0, capacity),
+		senderMap:            make(map[common.Address]map[uint64]*poolItem, capacity/4),
+		pendingNonces:        make(map[common.Address]uint64, capacity/4),
+		dbNonces:             make(map[common.Address]uint64, capacity/4),
+		verifiedTxes:         make([]poolItem, 0, capacity),
 		capacity:             capacity,
 		payerIndex:           payerIndex,
 		fees:                 make(map[common.Address]utilityBalanceAndFees),
@@ -372,7 +479,7 @@ func (mp *Pool) SetResendThreshold(h uint32, f func(*transaction.Transaction, in
 	mp.resendFunc = f
 }
 
-func (mp *Pool) resendStaleItems(items []item) {
+func (mp *Pool) resendStaleItems(items []poolItem) {
 	for i := range items {
 		mp.resendFunc(items[i].txn, items[i].data)
 	}
@@ -394,7 +501,7 @@ func (mp *Pool) TryGetData(hash common.Hash) (interface{}, bool) {
 	mp.lock.RLock()
 	defer mp.lock.RUnlock()
 	if tx, ok := mp.verifiedMap[hash]; ok {
-		itm := item{txn: tx}
+		itm := poolItem{txn: tx}
 		n := sort.Search(len(mp.verifiedTxes), func(n int) bool {
 			return itm.CompareTo(mp.verifiedTxes[n]) >= 0
 		})
@@ -438,15 +545,12 @@ func (mp *Pool) checkTxConflicts(tx *transaction.Transaction, fee Feer) (*transa
 	var expectedSenderFee = actualSenderFee
 	// Check Conflicts attributes.
 	var conflictToBeRemoved *transaction.Transaction
-	for _, existTx := range mp.verifiedMap {
-		if existTx.From() == tx.From() && existTx.Nonce() == tx.Nonce() {
-			if existTx.GasPrice().Cmp(tx.GasPrice()) < 0 {
-				conflictToBeRemoved = existTx
-				(&expectedSenderFee.feeSum).Sub(&expectedSenderFee.feeSum, existTx.Cost())
-			} else {
-				return nil, ErrConflictsNonce
-			}
-			break
+	if existTx, ok := mp.senderMap[tx.From()][tx.Nonce()]; ok {
+		if existTx.txn.GasPrice().Cmp(tx.GasPrice()) < 0 {
+			conflictToBeRemoved = existTx.txn
+			(&expectedSenderFee.feeSum).Sub(&expectedSenderFee.feeSum, existTx.txn.Cost())
+		} else {
+			return nil, ErrConflictsNonce
 		}
 	}
 	_, err := checkBalance(tx, expectedSenderFee)

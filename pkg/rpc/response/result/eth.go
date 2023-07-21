@@ -24,6 +24,7 @@ type TransactionObject struct {
 	To       *common.Address      `json:"to"`
 	Value    *big.Int             `json:"value"`   //optional
 	Witness  *transaction.Witness `json:"witness"` //optional
+	Nonce    uint64               `json:"nonce"`   //optional
 }
 
 type txObj struct {
