@@ -167,7 +167,7 @@ func (c *Client) Eth_GetStorageAt(address common.Address, key common.Hash) (comm
 
 func (c *Client) Eth_GetTransactionCount(address common.Address) (uint64, error) {
 	var (
-		params = request.NewRawParams(address.String())
+		params = request.NewRawParams(address.String(), "pending")
 		resp   = ""
 	)
 	if err := c.performRequest("eth_getTransactionCount", params, &resp); err != nil {
