@@ -2,7 +2,6 @@ package filters
 
 import (
 	"encoding/json"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -12,7 +11,7 @@ type LogFilter struct {
 	FromBlock uint64
 	ToBlock   uint64
 	Blockhash common.Hash
-	Address   common.Address
+	Address   []common.Address
 	Topics    []common.Hash
 }
 
@@ -20,12 +19,18 @@ func (f *LogFilter) Match(l *types.Log) bool {
 	if f.Blockhash != (common.Hash{}) && l.BlockHash != f.Blockhash {
 		return false
 	}
-	if f.Blockhash == (common.Hash{}) && (l.BlockNumber < uint64(f.FromBlock) || l.BlockNumber >= uint64(f.ToBlock)) {
-		return false
+	if f.FromBlock != 0 && f.ToBlock != 0 {
+		if f.Blockhash == (common.Hash{}) && (l.BlockNumber < uint64(f.FromBlock) || l.BlockNumber > uint64(f.ToBlock)) {
+			return false
+		}
 	}
-	if l.Address != f.Address {
-		return false
+
+	if len(f.Address) > 0 {
+		if !Contains(f.Address, l.Address) {
+			return false
+		}
 	}
+
 	for _, topic := range f.Topics {
 		for _, t := range l.Topics {
 			if topic == t {
@@ -33,15 +38,16 @@ func (f *LogFilter) Match(l *types.Log) bool {
 			}
 		}
 	}
-	return false
+
+	return true
 }
 
 type logFilterJSON struct {
-	FromBlock string         `json:"fromBlock"`
-	ToBlock   string         `json:"toBlock"`
-	Blockhash common.Hash    `json:"blockHash"`
-	Address   common.Address `json:"address"`
-	Topics    []common.Hash  `json:"topics"`
+	FromBlock string           `json:"fromBlock"`
+	ToBlock   string           `json:"toBlock"`
+	Blockhash common.Hash      `json:"blockHash"`
+	Address   []common.Address `json:"address"`
+	Topics    []common.Hash    `json:"topics"`
 }
 
 func (f LogFilter) MarshalJSON() ([]byte, error) {
@@ -79,4 +85,13 @@ func (f *LogFilter) UnmarshalJSON(b []byte) error {
 	f.Address = lf.Address
 	f.Topics = lf.Topics
 	return nil
+}
+
+func Contains[T comparable](elems []T, v T) bool {
+	for _, s := range elems {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }
