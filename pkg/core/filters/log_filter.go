@@ -2,6 +2,7 @@ package filters
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -12,7 +13,7 @@ type LogFilter struct {
 	ToBlock   uint64
 	Blockhash common.Hash
 	Address   []common.Address
-	Topics    []common.Hash
+	Topics    [][]common.Hash
 }
 
 func (f *LogFilter) Match(l *types.Log) bool {
@@ -31,13 +32,13 @@ func (f *LogFilter) Match(l *types.Log) bool {
 		}
 	}
 
-	for _, topic := range f.Topics {
-		for _, t := range l.Topics {
-			if topic == t {
-				return true
-			}
-		}
-	}
+	//for _, topic := range f.Topics {
+	//	for _, t := range l.Topics {
+	//		if topic == t {
+	//			return true
+	//		}
+	//	}
+	//}
 
 	return true
 }
@@ -47,7 +48,7 @@ type logFilterJSON struct {
 	ToBlock   string           `json:"toBlock"`
 	Blockhash common.Hash      `json:"blockHash"`
 	Address   []common.Address `json:"address"`
-	Topics    []common.Hash    `json:"topics"`
+	Topics    [][]common.Hash  `json:"topics"`
 }
 
 func (f LogFilter) MarshalJSON() ([]byte, error) {
@@ -63,10 +64,53 @@ func (f LogFilter) MarshalJSON() ([]byte, error) {
 
 func (f *LogFilter) UnmarshalJSON(b []byte) error {
 	lf := &logFilterJSON{}
-	err := json.Unmarshal(b, lf)
-	if err != nil {
-		return err
+	input := make(map[string]interface{})
+	err1 := json.Unmarshal(b, &input)
+	if err1 != nil {
+		return err1
 	}
+	if input["toBlock"] != nil {
+		lf.ToBlock = input["toBlock"].(string)
+	} else {
+		lf.ToBlock = ""
+	}
+	fmt.Println("input:+++", input)
+	if input["fromBlock"] != nil {
+		lf.FromBlock = input["fromBlock"].(string)
+	} else {
+		lf.FromBlock = ""
+	}
+
+	if input["blockHash"] != nil {
+		lf.Blockhash = common.HexToHash(input["blockHash"].(string))
+	} else {
+		lf.Blockhash = common.Hash{}
+	}
+
+	if input["address"] != nil {
+		if address, ok := input["address"].(string); ok {
+			lf.Address = []common.Address{common.HexToAddress(address)}
+			fmt.Println("address is a string:", address)
+		} else if address, ok := input["address"].([]common.Address); ok {
+			lf.Address = address
+			fmt.Println("address is a []string:", address)
+		}
+	} else {
+		lf.Address = []common.Address{}
+	}
+	if input["topics"] != nil {
+		if topic, ok := input["topics"].([]common.Hash); ok {
+			lf.Topics = [][]common.Hash{topic}
+			fmt.Println("topic is a []:", topic)
+		} else if topic, ok := input["topics"].([][]common.Hash); ok {
+			lf.Topics = topic
+			fmt.Println("topic is a [][]:", topic)
+		}
+	} else {
+		lf.Topics = [][]common.Hash{}
+	}
+	//
+
 	if lf.FromBlock != "" {
 		fromBlock, err := hexutil.DecodeUint64(lf.FromBlock)
 		if err != nil {
