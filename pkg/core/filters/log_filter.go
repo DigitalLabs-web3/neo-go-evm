@@ -2,7 +2,6 @@ package filters
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -74,7 +73,7 @@ func (f *LogFilter) UnmarshalJSON(b []byte) error {
 	} else {
 		lf.ToBlock = ""
 	}
-	fmt.Println("input:+++", input)
+
 	if input["fromBlock"] != nil {
 		lf.FromBlock = input["fromBlock"].(string)
 	} else {
@@ -90,10 +89,8 @@ func (f *LogFilter) UnmarshalJSON(b []byte) error {
 	if input["address"] != nil {
 		if address, ok := input["address"].(string); ok {
 			lf.Address = []common.Address{common.HexToAddress(address)}
-			fmt.Println("address is a string:", address)
 		} else if address, ok := input["address"].([]common.Address); ok {
 			lf.Address = address
-			fmt.Println("address is a []string:", address)
 		}
 	} else {
 		lf.Address = []common.Address{}
@@ -101,16 +98,13 @@ func (f *LogFilter) UnmarshalJSON(b []byte) error {
 	if input["topics"] != nil {
 		if topic, ok := input["topics"].([]common.Hash); ok {
 			lf.Topics = [][]common.Hash{topic}
-			fmt.Println("topic is a []:", topic)
 		} else if topic, ok := input["topics"].([][]common.Hash); ok {
 			lf.Topics = topic
-			fmt.Println("topic is a [][]:", topic)
 		}
 	} else {
 		lf.Topics = [][]common.Hash{}
 	}
 	//
-
 	if lf.FromBlock != "" {
 		fromBlock, err := hexutil.DecodeUint64(lf.FromBlock)
 		if err != nil {
