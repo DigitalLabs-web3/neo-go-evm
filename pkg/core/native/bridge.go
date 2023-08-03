@@ -24,6 +24,7 @@ import (
 	"github.com/DigitalLabs-web3/neo-go-evm/pkg/util/slice"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/nspcc-dev/neo-go/pkg/encoding/bigint"
 )
 
 const (
@@ -303,7 +304,7 @@ func (b *Bridge) ContractCall__View_getMinted(ic InteropContext, depositId int64
 }
 
 func (b *Bridge) GetMinted(d *dao.Simple, depositId int64) (common.Hash, error) {
-	idBytes := big.NewInt(int64(depositId)).Bytes()
+	idBytes := bigint.ToBytes(big.NewInt(depositId))
 	state := b.getMintedState(d, idBytes)
 	if state == nil {
 		return common.Hash{}, nil
