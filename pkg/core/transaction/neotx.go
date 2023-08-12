@@ -219,7 +219,7 @@ type NeoTxJson struct {
 	From     common.Address  `json:"from"`
 	To       *common.Address `json:"to"`
 	Value    hexutil.Big     `json:"value"`
-	Data     hexutil.Bytes   `json:"data"`
+	Data     hexutil.Bytes   `json:"input"`
 	Witness  Witness         `json:"witness"`
 	R        hexutil.Big     `json:"r"`
 	S        hexutil.Big     `json:"s"`
