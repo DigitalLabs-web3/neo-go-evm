@@ -755,7 +755,8 @@ func (bc *Blockchain) storeBlock(block *block.Block, txpool *mempool.Pool) error
 		if execErr == nil {
 			aer.Status = 1
 		}
-		aer.PostState = []byte{byte(aer.Status)}
+		//aer.PostState = []byte{byte(aer.Status)}
+		aer.PostState = block.MerkleRoot.Bytes()
 		appExecResults = append(appExecResults, aer)
 		aerchan <- aer
 	}
@@ -1507,7 +1508,7 @@ func (bc *Blockchain) GetLogs(filter *filters.LogFilter) ([]*types.Log, error) {
 	if filter.Blockhash != (common.Hash{}) {
 		blockhashes = append(blockhashes, filter.Blockhash)
 	} else {
-		for i := filter.FromBlock; i < filter.ToBlock; i++ {
+		for i := filter.FromBlock; i <= filter.ToBlock; i++ {
 			hash := bc.GetHeaderHash(int(i))
 			if hash == (common.Hash{}) {
 				break
