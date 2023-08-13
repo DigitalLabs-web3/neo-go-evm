@@ -588,6 +588,7 @@ func (bc *Blockchain) addHeaders(verify bool, headers ...*block.Header) error {
 		}
 		bc.headerHashes = append(bc.headerHashes, h.Hash())
 		lastHeader = h
+		bc.dao.StoreAsHeader(h)
 	}
 
 	if oldlen != len(bc.headerHashes) {

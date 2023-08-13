@@ -94,6 +94,14 @@ func (dao *Simple) makeBlockKey(hash common.Hash) []byte {
 	return key
 }
 
+func (dao *Simple) StoreAsHeader(header *block.Header) error {
+	return dao.StoreAsBlock(&block.Block{
+		Header:       *header,
+		Transactions: []*transaction.Transaction{},
+		Trimmed:      true,
+	}, nil)
+}
+
 // GetBlock returns Block by the given hash if it exists in the store.
 func (dao *Simple) GetBlock(hash common.Hash) (*block.Block, *types.Receipt, error) {
 	return dao.getBlock(dao.makeBlockKey(hash))
@@ -112,6 +120,9 @@ func (dao *Simple) getBlock(key []byte) (*block.Block, *types.Receipt, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	if len(rb) == 0 {
+		return block, nil, nil
+	}
 	receipt := new(types.Receipt)
 	err = json.Unmarshal(rb, receipt)
 	if err != nil {
@@ -129,9 +140,13 @@ func (dao *Simple) StoreAsBlock(block *block.Block, receipt *types.Receipt) erro
 		return buf.Err
 	}
 	bb := buf.Bytes()
-	rb, err := json.Marshal(receipt)
-	if err != nil {
-		return err
+	rb := []byte(nil)
+	if receipt != nil {
+		b, err := json.Marshal(receipt)
+		if err != nil {
+			return err
+		}
+		rb = b
 	}
 	buf = io.NewBufBinWriter()
 	buf.WriteVarBytes(bb)
