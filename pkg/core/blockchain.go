@@ -588,6 +588,7 @@ func (bc *Blockchain) addHeaders(verify bool, headers ...*block.Header) error {
 		}
 		bc.headerHashes = append(bc.headerHashes, h.Hash())
 		lastHeader = h
+		bc.dao.StoreAsHeader(h)
 	}
 
 	if oldlen != len(bc.headerHashes) {
@@ -1016,11 +1017,11 @@ func (bc *Blockchain) GetHeader(hash common.Hash) (*block.Header, error) {
 			return &tb.Header, nil
 		}
 	}
-	block, _, err := bc.dao.GetBlock(hash)
+	header, err := bc.dao.GetHeader(hash)
 	if err != nil {
 		return nil, err
 	}
-	return &block.Header, nil
+	return header, nil
 }
 
 // HasTransaction returns true if the blockchain contains he given
