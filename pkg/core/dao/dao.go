@@ -102,9 +102,24 @@ func (dao *Simple) StoreAsHeader(header *block.Header) error {
 	}, nil)
 }
 
+func (dao *Simple) GetHeader(hash common.Hash) (*block.Header, error) {
+	blk, _, err := dao.getBlock(dao.makeBlockKey(hash))
+	if err != nil {
+		return nil, err
+	}
+	return &blk.Header, nil
+}
+
 // GetBlock returns Block by the given hash if it exists in the store.
 func (dao *Simple) GetBlock(hash common.Hash) (*block.Block, *types.Receipt, error) {
-	return dao.getBlock(dao.makeBlockKey(hash))
+	blk, receipt, err := dao.getBlock(dao.makeBlockKey(hash))
+	if err != nil {
+		return nil, nil, err
+	}
+	if receipt == nil {
+		return nil, nil, errors.New("only header")
+	}
+	return blk, receipt, nil
 }
 
 func (dao *Simple) getBlock(key []byte) (*block.Block, *types.Receipt, error) {
