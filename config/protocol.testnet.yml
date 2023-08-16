@@ -16,7 +16,7 @@ ProtocolConfiguration:
     - evm.ngd.network:31333
     - evm.ngd.network:32333
     - evm.ngd.network:33333
-    - evm.ngd.network:34443
+    - evm.ngd.network:34333
   VerifyBlocks: false
   VerifyTransactions: false
   MainNetwork: 894710606
