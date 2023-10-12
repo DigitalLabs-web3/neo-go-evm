@@ -448,7 +448,7 @@ func (s *service) verifyBlock(b block.Block) bool {
 		var err error
 
 		gas += tx.Gas()
-		if mainPool.ContainsKey(tx.Hash()) {
+		if mainPool.ContainsSenderNonce(tx.From(), tx.Nonce()) {
 			err = pool.Add(tx, s.Chain)
 			if err == nil {
 				continue

@@ -130,6 +130,14 @@ func (mp *Pool) containsKey(hash common.Hash) bool {
 	return false
 }
 
+// ContainsKey checks if a transactions hash is in the Pool.
+func (mp *Pool) ContainsSenderNonce(sender common.Address, nonce uint64) bool {
+	mp.lock.RLock()
+	defer mp.lock.RUnlock()
+	_, ok := mp.senderMap[sender][nonce]
+	return ok
+}
+
 func (mp *Pool) HasConflicts(t *transaction.Transaction, fee Feer) bool {
 	mp.lock.RLock()
 	defer mp.lock.RUnlock()
