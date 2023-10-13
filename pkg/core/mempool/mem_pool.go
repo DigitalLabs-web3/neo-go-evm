@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"math/bits"
 	"sort"
@@ -307,16 +308,28 @@ func (mp *Pool) checkNonceContinue(tx *transaction.Transaction) bool {
 // removeInternal is an internal unlocked representation of Remove.
 // don't change nonce
 func (mp *Pool) removeInternal(tx *transaction.Transaction) {
-	item := mp.senderMap[tx.From()][tx.Nonce()]
+	item, ok := mp.senderMap[tx.From()][tx.Nonce()]
+	if !ok {
+		fmt.Println("### missing tx", tx)
+		return
+	}
 	// use priority to increase search
 	num := sort.Search(len(mp.verifiedTxes), func(n int) bool {
 		return item.CompareTo(mp.verifiedTxes[n]) >= 0
 	})
+	if num == len(mp.verifiedTxes) {
+		fmt.Println("### search tx failed", tx)
+		return
+	}
 	target := num
 	for i := num; i < len(mp.verifiedTxes); i++ {
 		if mp.verifiedTxes[i].txn.Hash() == tx.Hash() {
 			target = i
 		}
+	}
+	if num == len(mp.verifiedTxes) {
+		fmt.Println("### search tx hash failed", tx)
+		return
 	}
 	mp.removeItemByIndex(target)
 }
@@ -552,7 +565,7 @@ func (mp *Pool) checkTxConflicts(tx *transaction.Transaction, fee Feer) (*transa
 	}
 	var expectedSenderFee = actualSenderFee
 	// Check Conflicts attributes.
-	var conflictToBeRemoved *transaction.Transaction
+	var conflictToBeRemoved *transaction.Transaction = nil
 	if existTx, ok := mp.senderMap[tx.From()][tx.Nonce()]; ok {
 		if existTx.txn.GasPrice().Cmp(tx.GasPrice()) < 0 {
 			conflictToBeRemoved = existTx.txn
