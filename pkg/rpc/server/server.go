@@ -132,6 +132,7 @@ var rpcHandlers = map[string]func(*Server, request.Params) (interface{}, *respon
 	"eth_getLogs":                             (*Server).eth_getLogs,
 	"eth_getUncleByBlockHashAndIndex":         (*Server).eth_getUncleByBlockHashAndIndex,
 	"eth_feeHistory":                          (*Server).eth_feeHistory,
+	"eth_maxPriorityFeePerGas":                (*Server).eth_maxPriorityFeePerGas,
 	// -- end eth api
 
 	// -- start trace api
@@ -1250,6 +1251,10 @@ func (s *Server) eth_feeHistory(_ request.Params) (interface{}, *response.Error)
 		return nil, response.NewInternalServerError("can't create fee history", err)
 	}
 	return fh, nil
+}
+
+func (s *Server) eth_maxPriorityFeePerGas(_ request.Params) (interface{}, *response.Error) {
+	return hexutil.EncodeBig(big.NewInt(1)), nil
 }
 
 // -- end eth api.
