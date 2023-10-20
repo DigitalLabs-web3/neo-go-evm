@@ -1309,7 +1309,7 @@ func (bc *Blockchain) verifyAndPoolTx(t *transaction.Transaction, pool *mempool.
 	}
 	// we should allow user to replace tx with higher gas price, so allow all tx form db nonce to pending nonce
 	if !pool.CheckNonceContinue(t) {
-		return fmt.Errorf("invalid nonce, addr=%s, nonce=%d, pending nonce=%d", t.From(), t.Nonce(), pool.PendingNonce(from))
+		return fmt.Errorf("invalid nonce, addr=%s, nonce=%d, db nonce=%d, pending nonce=%d", t.From(), t.Nonce(), pool.GetDBNonce(from), pool.PendingNonce(from))
 	}
 
 	err = pool.Add(t, feer, data...)
