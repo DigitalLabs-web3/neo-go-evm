@@ -707,6 +707,8 @@ func (bc *Blockchain) storeBlock(block *block.Block, txpool *mempool.Pool) error
 		if tx.To() == nil {
 			_, address, left, execErr = vm.Create(ic, tx.Data(), gas, tx.Value())
 		} else {
+			// nonce will increase in vm.Create
+			sdb.SetNonce(tx.From(), sdb.GetNonce(tx.From())+1)
 			_, left, execErr = vm.Call(ic, *tx.To(), tx.Data(), gas, tx.Value())
 		}
 		if execErr != nil {
@@ -716,7 +718,6 @@ func (bc *Blockchain) storeBlock(block *block.Block, txpool *mempool.Pool) error
 		}
 		gasUsed := tx.Gas() - left
 		logs := sdb.GetLogs()
-		sdb.SetNonce(tx.From(), sdb.GetNonce(tx.From())+1)
 		if block.Index > 0 {
 			sdb.AddBalance(ic.Coinbase(), big.NewInt(0).Mul(big.NewInt(int64(netFee)), gasPrice))
 		}
