@@ -448,6 +448,7 @@ func (s *service) verifyBlock(b block.Block) bool {
 		var err error
 
 		gas += tx.Gas()
+		callFrom := "pool.Add"
 		if mainPool.ContainsSenderNonce(tx.From(), tx.Nonce()) {
 			err = pool.Add(tx, s.Chain)
 			if err == nil {
@@ -455,11 +456,19 @@ func (s *service) verifyBlock(b block.Block) bool {
 			}
 		} else {
 			err = s.Chain.PoolTx(tx, pool)
+			callFrom = "s.Chain.PoolTx"
+			if err != nil && errors.Is(err, mempool.ErrConflictsNonce) {
+				s.log.Warn("PoolTx: invalid transaction in proposed block",
+					zap.Stringer("hash", tx.Hash()),
+					zap.Error(err))
+				continue
+			}
 		}
 		if err != nil {
-			s.log.Warn("invalid transaction in proposed block",
+			s.log.Error("invalid transaction in proposed block",
 				zap.Stringer("hash", tx.Hash()),
-				zap.Error(err))
+				zap.Error(err),
+				zap.String("call from", callFrom))
 			return false
 		}
 		if s.Chain.BlockHeight() >= coreb.Index {

@@ -183,6 +183,8 @@ func checkBalance(tx *transaction.Transaction, balance utilityBalanceAndFees) (b
 
 // Add tries to add given transaction to the Pool.
 func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) error {
+	mp.lock.Lock()
+	defer mp.lock.Unlock()
 	var pItem = poolItem{
 		txn:        t,
 		blockStamp: fee.BlockHeight(),
@@ -191,8 +193,6 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 	if data != nil {
 		pItem.data = data[0]
 	}
-	mp.lock.Lock()
-	defer mp.lock.Unlock()
 	if mp.containsKey(t.Hash()) {
 		return ErrDup
 	}
@@ -205,7 +205,7 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 	}
 	// if pre pending tx of same sender exists, set priority to previous tx
 	pre, ok := mp.senderMap[pItem.txn.From()][pItem.txn.Nonce()-1]
-	if ok && pItem.priority.Cmp(&pre.priority) == 1 {
+	if ok && pItem.priority.Cmp(&pre.priority) > 0 {
 		pItem.priority = pre.priority
 	}
 	// Insert into sorted array (from max to min, that could also be done
@@ -231,10 +231,8 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 		if len(mp.senderMap[unlucky.txn.From()]) == 0 {
 			mp.pendingNonces[unlucky.txn.From()] = 0
 		}
-
-	} else {
-		mp.verifiedTxes = append(mp.verifiedTxes, pItem)
 	}
+	mp.verifiedTxes = append(mp.verifiedTxes, pItem)
 	if n != len(mp.verifiedTxes)-1 {
 		copy(mp.verifiedTxes[n+1:], mp.verifiedTxes[n:])
 		mp.verifiedTxes[n] = pItem
@@ -310,7 +308,7 @@ func (mp *Pool) checkNonceContinue(tx *transaction.Transaction) bool {
 func (mp *Pool) removeInternal(tx *transaction.Transaction) {
 	item, ok := mp.senderMap[tx.From()][tx.Nonce()]
 	if !ok {
-		fmt.Println("### missing tx", tx)
+		fmt.Println("### missing tx", tx.Hash(), tx.From(), tx.Nonce())
 		return
 	}
 	// use priority to increase search
@@ -318,7 +316,7 @@ func (mp *Pool) removeInternal(tx *transaction.Transaction) {
 		return item.CompareTo(mp.verifiedTxes[n]) >= 0
 	})
 	if num == len(mp.verifiedTxes) {
-		fmt.Println("### search tx failed", tx)
+		fmt.Println("### search tx failed", tx.Hash(), item.txn.Hash(), "num: ", num)
 		return
 	}
 	target := num
@@ -328,7 +326,7 @@ func (mp *Pool) removeInternal(tx *transaction.Transaction) {
 		}
 	}
 	if num == len(mp.verifiedTxes) {
-		fmt.Println("### search tx hash failed", tx)
+		fmt.Println("### search tx hash failed", tx.Hash(), item.txn.Hash())
 		return
 	}
 	mp.removeItemByIndex(target)
@@ -549,7 +547,11 @@ func (mp *Pool) GetVerifiedTransactions() []*transaction.Transaction {
 	var t = make([]*transaction.Transaction, len(mp.verifiedTxes))
 
 	for i := range mp.verifiedTxes {
-		t[i] = mp.verifiedTxes[i].txn
+		tx := mp.verifiedTxes[i].txn
+		// filter with sender map, will find root cause with more logs
+		if mp.senderMap[tx.From()][tx.Nonce()].txn.Hash() == tx.Hash() {
+			t[i] = mp.verifiedTxes[i].txn
+		}
 	}
 
 	return t
