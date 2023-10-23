@@ -32,6 +32,8 @@ var (
 	// ErrConflictsAttribute is returned when transaction conflicts with other transactions
 	// due to its (or theirs) nonce.
 	ErrConflictsNonce = errors.New("conflicts with memory pool due to nonce")
+	// ErrNotFound is returned when transaction not found in memory pool.
+	ErrNotFound = errors.New("transaction item not found in memory pool")
 )
 
 // poolItem represents a transaction in the the Memory pool.
@@ -96,7 +98,7 @@ func (p poolItem) CompareTo(otherP poolItem) int {
 	// nonce lower with higher priority
 	if p.txn.Nonce() > otherP.txn.Nonce() {
 		return -1
-	} else if p.txn.Nonce() > otherP.txn.Nonce() {
+	} else if p.txn.Nonce() < otherP.txn.Nonce() {
 		return 1
 	}
 	return p.txn.Hash().Big().Cmp(otherP.txn.Hash().Big())
@@ -305,31 +307,32 @@ func (mp *Pool) checkNonceContinue(tx *transaction.Transaction) bool {
 
 // removeInternal is an internal unlocked representation of Remove.
 // don't change nonce
-func (mp *Pool) removeInternal(tx *transaction.Transaction) {
+func (mp *Pool) removeInternal(tx *transaction.Transaction) error {
 	item, ok := mp.senderMap[tx.From()][tx.Nonce()]
 	if !ok {
 		fmt.Println("### missing tx", tx.Hash(), tx.From(), tx.Nonce())
-		return
+		return ErrNotFound
 	}
 	// use priority to increase search
 	num := sort.Search(len(mp.verifiedTxes), func(n int) bool {
-		return item.CompareTo(mp.verifiedTxes[n]) >= 0
+		return item.CompareTo(mp.verifiedTxes[n]) == 0
 	})
 	if num == len(mp.verifiedTxes) {
 		fmt.Println("### search tx failed", tx.Hash(), item.txn.Hash(), "num: ", num)
-		return
+		return ErrNotFound
 	}
 	target := num
-	for i := num; i < len(mp.verifiedTxes); i++ {
-		if mp.verifiedTxes[i].txn.Hash() == tx.Hash() {
-			target = i
-		}
-	}
-	if num == len(mp.verifiedTxes) {
-		fmt.Println("### search tx hash failed", tx.Hash(), item.txn.Hash())
-		return
-	}
+	// for i := num; i < len(mp.verifiedTxes); i++ {
+	// 	if mp.verifiedTxes[i].txn.Hash() == tx.Hash() {
+	// 		target = i
+	// 	}
+	// }
+	// if num == len(mp.verifiedTxes) {
+	// 	fmt.Println("### search tx hash failed", tx.Hash(), item.txn.Hash())
+	// 	return ErrNotFound
+	// }
 	mp.removeItemByIndex(target)
+	return nil
 }
 
 // remove item from memory pool
@@ -547,11 +550,7 @@ func (mp *Pool) GetVerifiedTransactions() []*transaction.Transaction {
 	var t = make([]*transaction.Transaction, len(mp.verifiedTxes))
 
 	for i := range mp.verifiedTxes {
-		tx := mp.verifiedTxes[i].txn
-		// filter with sender map, will find root cause with more logs
-		if mp.senderMap[tx.From()][tx.Nonce()].txn.Hash() == tx.Hash() {
-			t[i] = mp.verifiedTxes[i].txn
-		}
+		t[i] = mp.verifiedTxes[i].txn
 	}
 
 	return t
