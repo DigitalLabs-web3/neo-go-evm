@@ -315,7 +315,7 @@ func (mp *Pool) removeInternal(tx *transaction.Transaction) error {
 	}
 	// use priority to increase search
 	num := sort.Search(len(mp.verifiedTxes), func(n int) bool {
-		return item.CompareTo(mp.verifiedTxes[n]) == 0
+		return item.CompareTo(mp.verifiedTxes[n]) >= 0
 	})
 	if num == len(mp.verifiedTxes) {
 		fmt.Println("### search tx failed", tx.Hash(), item.txn.Hash(), "num: ", num)
