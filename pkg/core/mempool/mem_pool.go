@@ -313,11 +313,11 @@ func (mp *Pool) removeInternal(tx *transaction.Transaction) error {
 		fmt.Println("### missing tx", tx.Hash(), tx.From(), tx.Nonce())
 		return ErrNotFound
 	}
-	// use priority to increase search
+	// use priority to improve search
 	num := sort.Search(len(mp.verifiedTxes), func(n int) bool {
 		return item.CompareTo(mp.verifiedTxes[n]) >= 0
 	})
-	if num == len(mp.verifiedTxes) {
+	if num == len(mp.verifiedTxes) || mp.verifiedTxes[num].txn.Hash() != tx.Hash() {
 		fmt.Println("### search tx failed", tx.Hash(), item.txn.Hash(), "num: ", num)
 		return ErrNotFound
 	}

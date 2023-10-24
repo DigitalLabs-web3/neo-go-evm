@@ -46,6 +46,7 @@ type Ledger interface {
 	GetTransaction(common.Hash) (*transaction.Transaction, *types.Receipt, error)
 	GetValidators(uint32) ([]*keys.PublicKey, error)
 	PoolTx(t *transaction.Transaction, pools ...*mempool.Pool) error
+	VerifyTx(t *transaction.Transaction) error
 	SubscribeForBlocks(ch chan<- *coreb.Block)
 	UnsubscribeFromBlocks(ch chan<- *coreb.Block)
 	BlockHeight() uint32
@@ -446,24 +447,21 @@ func (s *service) verifyBlock(b block.Block) bool {
 	var mainPool = s.Chain.GetMemPool()
 	for _, tx := range coreb.Transactions {
 		var err error
-
-		gas += tx.Gas()
 		callFrom := "pool.Add"
-		if mainPool.ContainsSenderNonce(tx.From(), tx.Nonce()) {
+		gas += tx.Gas()
+		if mainPool.ContainsKey(tx.Hash()) {
 			err = pool.Add(tx, s.Chain)
 			if err == nil {
 				continue
 			}
+		} else if mainPool.ContainsSenderNonce(tx.From(), tx.Nonce()) {
+			err = s.Chain.VerifyTx(tx)
+			callFrom = "s.Chain.VerifyTx"
 		} else {
 			err = s.Chain.PoolTx(tx, pool)
 			callFrom = "s.Chain.PoolTx"
-			if err != nil && errors.Is(err, mempool.ErrConflictsNonce) {
-				s.log.Warn("PoolTx: invalid transaction in proposed block",
-					zap.Stringer("hash", tx.Hash()),
-					zap.Error(err))
-				continue
-			}
 		}
+
 		if err != nil {
 			s.log.Error("invalid transaction in proposed block",
 				zap.Stringer("hash", tx.Hash()),
@@ -471,12 +469,11 @@ func (s *service) verifyBlock(b block.Block) bool {
 				zap.String("call from", callFrom))
 			return false
 		}
-		if s.Chain.BlockHeight() >= coreb.Index {
-			s.log.Warn("proposed block has already outdated")
-			return false
-		}
 	}
-
+	if s.Chain.BlockHeight() >= coreb.Index {
+		s.log.Warn("proposed block has already outdated")
+		return false
+	}
 	maxBlockGas := s.ProtocolConfiguration.MaxBlockGas
 	if gas > maxBlockGas {
 		s.log.Warn("proposed block system fee exceeds config MaxBlockSystemFee",
