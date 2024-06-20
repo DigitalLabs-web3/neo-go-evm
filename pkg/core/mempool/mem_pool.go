@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"math/bits"
 	"sort"
@@ -31,6 +32,8 @@ var (
 	// ErrConflictsAttribute is returned when transaction conflicts with other transactions
 	// due to its (or theirs) nonce.
 	ErrConflictsNonce = errors.New("conflicts with memory pool due to nonce")
+	// ErrNotFound is returned when transaction not found in memory pool.
+	ErrNotFound = errors.New("transaction item not found in memory pool")
 )
 
 // poolItem represents a transaction in the the Memory pool.
@@ -95,7 +98,7 @@ func (p poolItem) CompareTo(otherP poolItem) int {
 	// nonce lower with higher priority
 	if p.txn.Nonce() > otherP.txn.Nonce() {
 		return -1
-	} else if p.txn.Nonce() > otherP.txn.Nonce() {
+	} else if p.txn.Nonce() < otherP.txn.Nonce() {
 		return 1
 	}
 	return p.txn.Hash().Big().Cmp(otherP.txn.Hash().Big())
@@ -130,6 +133,14 @@ func (mp *Pool) containsKey(hash common.Hash) bool {
 	return false
 }
 
+// ContainsKey checks if a transactions hash is in the Pool.
+func (mp *Pool) ContainsSenderNonce(sender common.Address, nonce uint64) bool {
+	mp.lock.RLock()
+	defer mp.lock.RUnlock()
+	_, ok := mp.senderMap[sender][nonce]
+	return ok
+}
+
 func (mp *Pool) HasConflicts(t *transaction.Transaction, fee Feer) bool {
 	mp.lock.RLock()
 	defer mp.lock.RUnlock()
@@ -138,34 +149,38 @@ func (mp *Pool) HasConflicts(t *transaction.Transaction, fee Feer) bool {
 
 // tryAddSendersFee tries to add system fee and network fee to the total sender`s fee in mempool
 // and returns false if both balance check is required and sender has not enough GAS to pay.
-func (mp *Pool) tryAddSendersFee(tx *transaction.Transaction, feer Feer, needCheck bool) bool {
+func (mp *Pool) tryAddSendersFee(tx *transaction.Transaction, feer Feer) error {
 	payer := tx.From()
+	senderFee := mp.getPayerBalance(payer, feer)
+	newFeeSum, err := checkBalance(tx, senderFee, nil)
+	if err != nil {
+		return err
+	}
+	senderFee.feeSum = newFeeSum
+	mp.fees[payer] = senderFee
+	return nil
+}
+
+func (mp *Pool) getPayerBalance(payer common.Address, feer Feer) utilityBalanceAndFees {
 	senderFee, ok := mp.fees[payer]
 	if !ok {
 		senderFee.balance = *(feer.GetUtilityTokenBalance(payer))
-		mp.fees[payer] = senderFee
 	}
-	if needCheck {
-		newFeeSum, err := checkBalance(tx, senderFee)
-		if err != nil {
-			return false
-		}
-		senderFee.feeSum = newFeeSum
-	} else {
-		(&senderFee.feeSum).Add(&senderFee.feeSum, tx.Cost())
-	}
-	mp.fees[payer] = senderFee
-	return true
+	return senderFee
 }
 
 // checkBalance returns new cumulative fee balance for account or an error in
 // case sender doesn't have enough GAS to pay for the transaction.
-func checkBalance(tx *transaction.Transaction, balance utilityBalanceAndFees) (big.Int, error) {
+func checkBalance(tx *transaction.Transaction, balance utilityBalanceAndFees, replaced *transaction.Transaction) (big.Int, error) {
 	var txFee big.Int = *tx.Cost()
 	if balance.balance.Cmp(&txFee) < 0 {
 		return txFee, ErrInsufficientFunds
 	}
-	(&txFee).Add(&txFee, &balance.feeSum)
+	// new feeSum
+	txFee.Add(&txFee, &balance.feeSum)
+	if replaced != nil {
+		txFee.Sub(&txFee, replaced.Cost())
+	}
 	if balance.balance.Cmp(&txFee) < 0 {
 		return txFee, ErrConflict
 	}
@@ -174,6 +189,8 @@ func checkBalance(tx *transaction.Transaction, balance utilityBalanceAndFees) (b
 
 // Add tries to add given transaction to the Pool.
 func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) error {
+	mp.lock.Lock()
+	defer mp.lock.Unlock()
 	var pItem = poolItem{
 		txn:        t,
 		blockStamp: fee.BlockHeight(),
@@ -182,21 +199,27 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 	if data != nil {
 		pItem.data = data[0]
 	}
-	mp.lock.Lock()
-	defer mp.lock.Unlock()
 	if mp.containsKey(t.Hash()) {
 		return ErrDup
 	}
+	// check nonce conflict
 	conflict, err := mp.checkTxConflicts(t, fee)
 	if err != nil {
 		return err
 	}
+	// check balance and add feeSum
+	payerBalance := mp.getPayerBalance(t.From(), fee)
+	_, err = checkBalance(pItem.txn, payerBalance, conflict)
+	if err != nil {
+		return err
+	}
+	// remove, will reduce feeSum in removeInternal
 	if conflict != nil {
 		mp.removeInternal(conflict)
 	}
 	// if pre pending tx of same sender exists, set priority to previous tx
 	pre, ok := mp.senderMap[pItem.txn.From()][pItem.txn.Nonce()-1]
-	if ok && pItem.priority.Cmp(&pre.priority) == 1 {
+	if ok && pItem.priority.Cmp(&pre.priority) > 0 {
 		pItem.priority = pre.priority
 	}
 	// Insert into sorted array (from max to min, that could also be done
@@ -222,10 +245,8 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 		if len(mp.senderMap[unlucky.txn.From()]) == 0 {
 			mp.pendingNonces[unlucky.txn.From()] = 0
 		}
-
-	} else {
-		mp.verifiedTxes = append(mp.verifiedTxes, pItem)
 	}
+	mp.verifiedTxes = append(mp.verifiedTxes, pItem)
 	if n != len(mp.verifiedTxes)-1 {
 		copy(mp.verifiedTxes[n+1:], mp.verifiedTxes[n:])
 		mp.verifiedTxes[n] = pItem
@@ -240,8 +261,9 @@ func (mp *Pool) Add(t *transaction.Transaction, fee Feer, data ...interface{}) e
 		mp.pendingNonces[t.From()] = t.Nonce() + 1
 	}
 	// fmt.Println("### Add nonce: " + strconv.FormatUint(t.Nonce(), 10))
-	// we already checked balance in checkTxConflicts, so don't need to check again
-	mp.tryAddSendersFee(pItem.txn, fee, false)
+	// we already checked balance in checkBalance, so don't need to check result again,
+	// replaced tx fee is deducted in removeInternal, so we just need add
+	mp.tryAddSendersFee(pItem.txn, fee)
 	updateMempoolMetrics(len(mp.verifiedTxes))
 	if mp.subscriptionsOn.Load() {
 		mp.events <- mempoolevent.Event{
@@ -298,19 +320,22 @@ func (mp *Pool) checkNonceContinue(tx *transaction.Transaction) bool {
 
 // removeInternal is an internal unlocked representation of Remove.
 // don't change nonce
-func (mp *Pool) removeInternal(tx *transaction.Transaction) {
-	item := mp.senderMap[tx.From()][tx.Nonce()]
-	// use priority to increase search
+func (mp *Pool) removeInternal(tx *transaction.Transaction) error {
+	item, ok := mp.senderMap[tx.From()][tx.Nonce()]
+	if !ok {
+		fmt.Println("### missing tx", tx.Hash(), tx.From(), tx.Nonce())
+		return ErrNotFound
+	}
+	// use priority to improve search
 	num := sort.Search(len(mp.verifiedTxes), func(n int) bool {
 		return item.CompareTo(mp.verifiedTxes[n]) >= 0
 	})
-	target := num
-	for i := num; i < len(mp.verifiedTxes); i++ {
-		if mp.verifiedTxes[i].txn.Hash() == tx.Hash() {
-			target = i
-		}
+	if num == len(mp.verifiedTxes) || mp.verifiedTxes[num].txn.Hash() != tx.Hash() {
+		fmt.Println("### search tx failed", tx.Hash(), item.txn.Hash(), "num: ", num)
+		return ErrNotFound
 	}
-	mp.removeItemByIndex(target)
+	mp.removeItemByIndex(num)
+	return nil
 }
 
 // remove item from memory pool
@@ -395,7 +420,7 @@ func (mp *Pool) RemoveStale(isOK func(*transaction.Transaction) bool, feer Feer)
 	)
 	senderRefershMap := make(map[common.Address]struct{})
 	for _, itm := range mp.verifiedTxes {
-		if isOK(itm.txn) && mp.checkPolicy(itm.txn, policyChanged) && mp.tryAddSendersFee(itm.txn, feer, true) {
+		if isOK(itm.txn) && mp.checkPolicy(itm.txn, policyChanged) && (mp.tryAddSendersFee(itm.txn, feer) == nil) {
 			newVerifiedTxes = append(newVerifiedTxes, itm)
 			if mp.resendThreshold != 0 {
 				// item is resend at resendThreshold, 2*resendThreshold, 4*resendThreshold ...
@@ -537,24 +562,15 @@ func (mp *Pool) GetVerifiedTransactions() []*transaction.Transaction {
 // checkTxConflicts is an internal unprotected version of Verify. It takes into
 // consideration conflicting transactions which are about to be removed from mempool.
 func (mp *Pool) checkTxConflicts(tx *transaction.Transaction, fee Feer) (*transaction.Transaction, error) {
-	payer := tx.From()
-	actualSenderFee, ok := mp.fees[payer]
-	if !ok {
-		actualSenderFee.balance = *(fee.GetUtilityTokenBalance(payer))
-	}
-	var expectedSenderFee = actualSenderFee
 	// Check Conflicts attributes.
-	var conflictToBeRemoved *transaction.Transaction
 	if existTx, ok := mp.senderMap[tx.From()][tx.Nonce()]; ok {
 		if existTx.txn.GasPrice().Cmp(tx.GasPrice()) < 0 {
-			conflictToBeRemoved = existTx.txn
-			(&expectedSenderFee.feeSum).Sub(&expectedSenderFee.feeSum, existTx.txn.Cost())
+			return existTx.txn, nil
 		} else {
 			return nil, ErrConflictsNonce
 		}
 	}
-	_, err := checkBalance(tx, expectedSenderFee)
-	return conflictToBeRemoved, err
+	return nil, nil
 }
 
 // Verify checks if a Sender of tx is able to pay for it (and all the other
